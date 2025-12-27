@@ -192,6 +192,12 @@ def create_app() -> Flask:
     except Exception as e:
         print(f"⚠️ dashboard_bp blueprint 登録エラー: {e}")
 
+    try:
+        from .blueprints.restructuring_bp import restructuring_bp
+        app.register_blueprint(restructuring_bp)
+    except Exception as e:
+        print(f"⚠️ restructuring_bp blueprint 登録エラー: {e}")
+
     # エラーハンドラ
     @app.errorhandler(404)
     def not_found(error):
