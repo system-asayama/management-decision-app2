@@ -1,0 +1,131 @@
+{% extends "financial_base.html" %}
+
+{% block title %}経営分析 - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h4><i class="bi bi-graph-up"></i> 経営分析</h4>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" onchange="location.href='{{ url_for('financial_ui.analysis') }}?company_id=' + this.value">
+                        <option value="">企業を選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}" {% if selected_company and selected_company.id == company.id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if selected_company %}
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-primary" onclick="runAnalysis()">
+                        <i class="bi bi-calculator"></i> 経営分析を実行
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if selected_company %}
+            <div id="analysisResults" class="mt-4">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 「経営分析を実行」ボタンをクリックして、経営指標を計算してください。
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-graph-up-arrow"></i> 成長力分析</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">売上高成長率</li>
+                                <li class="list-group-item">付加価値成長率</li>
+                                <li class="list-group-item">税引前利益成長率</li>
+                                <li class="list-group-item">自己資本成長率</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-currency-dollar"></i> 収益力分析</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">総資本経常利益率（ROA）</li>
+                                <li class="list-group-item">自己資本経常利益率（ROE）</li>
+                                <li class="list-group-item">売上高総利益率</li>
+                                <li class="list-group-item">売上高営業利益率</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="bi bi-piggy-bank"></i> 資金力分析</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">自己資本比率</li>
+                                <li class="list-group-item">流動比率</li>
+                                <li class="list-group-item">当座比率</li>
+                                <li class="list-group-item">固定比率</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-people"></i> 生産力分析</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">付加価値労働生産性</li>
+                                <li class="list-group-item">利益生産性</li>
+                                <li class="list-group-item">労働分配率</li>
+                                <li class="list-group-item">設備投資効率</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 企業を選択してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function runAnalysis() {
+    const companyId = document.getElementById('companySelect').value;
+    if (!companyId) {
+        alert('企業を選択してください');
+        return;
+    }
+    
+    // TODO: APIを呼び出して経営分析を実行
+    document.getElementById('analysisResults').innerHTML = `
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 経営分析を実行しました。（実装予定）
+        </div>
+    `;
+}
+</script>
+{% endblock %}

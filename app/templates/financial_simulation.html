@@ -1,0 +1,194 @@
+{% extends "financial_base.html" %}
+
+{% block title %}シミュレーション - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h4><i class="bi bi-lightning"></i> 経営シミュレーション</h4>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" onchange="location.href='{{ url_for('financial_ui.simulation') }}?company_id=' + this.value">
+                        <option value="">企業を選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}" {% if selected_company and selected_company.id == company.id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            {% if selected_company %}
+            <ul class="nav nav-tabs" id="simulationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="multi-year-tab" data-bs-toggle="tab" data-bs-target="#multi-year" type="button">
+                        複数年度経営計画
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="retention-tab" data-bs-toggle="tab" data-bs-target="#retention" type="button">
+                        内部留保シミュレーション
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="loan-tab" data-bs-toggle="tab" data-bs-target="#loan" type="button">
+                        借入金許容限度額分析
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3" id="simulationTabContent">
+                <!-- 複数年度経営計画 -->
+                <div class="tab-pane fade show active" id="multi-year" role="tabpanel">
+                    <h5 class="mb-3">複数年度経営計画シミュレーション</h5>
+                    <p class="text-muted">基準年度のデータから3〜5年度の経営計画を自動生成します。</p>
+                    
+                    <form id="multiYearForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="sales_growth_rate" class="form-label">売上成長率（%）</label>
+                                <input type="number" class="form-control" id="sales_growth_rate" step="0.1" value="5.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="cost_of_sales_rate" class="form-label">売上原価率（%）</label>
+                                <input type="number" class="form-control" id="cost_of_sales_rate" step="0.1" value="60.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="sga_rate" class="form-label">販管費率（%）</label>
+                                <input type="number" class="form-control" id="sga_rate" step="0.1" value="25.0">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="tax_rate" class="form-label">税率（%）</label>
+                                <input type="number" class="form-control" id="tax_rate" step="0.1" value="30.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="dividend_payout_ratio" class="form-label">配当性向（%）</label>
+                                <input type="number" class="form-control" id="dividend_payout_ratio" step="0.1" value="30.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="num_years" class="form-label">シミュレーション年数</label>
+                                <select class="form-select" id="num_years">
+                                    <option value="3" selected>3年</option>
+                                    <option value="5">5年</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="runMultiYearSimulation()">
+                            <i class="bi bi-play-circle"></i> シミュレーション実行
+                        </button>
+                    </form>
+                    
+                    <div id="multiYearResults" class="mt-4"></div>
+                </div>
+                
+                <!-- 内部留保シミュレーション -->
+                <div class="tab-pane fade" id="retention" role="tabpanel">
+                    <h5 class="mb-3">内部留保シミュレーション</h5>
+                    <p class="text-muted">目標自己資本比率を達成するために必要な内部留保額を計算します。</p>
+                    
+                    <form id="retentionForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="target_equity_ratio" class="form-label">目標自己資本比率（%）</label>
+                                <input type="number" class="form-control" id="target_equity_ratio" step="0.1" value="40.0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="retention_years" class="form-label">達成期間（年）</label>
+                                <input type="number" class="form-control" id="retention_years" min="1" max="10" value="5">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="runRetentionSimulation()">
+                            <i class="bi bi-play-circle"></i> シミュレーション実行
+                        </button>
+                    </form>
+                    
+                    <div id="retentionResults" class="mt-4"></div>
+                </div>
+                
+                <!-- 借入金許容限度額分析 -->
+                <div class="tab-pane fade" id="loan" role="tabpanel">
+                    <h5 class="mb-3">借入金許容限度額分析</h5>
+                    <p class="text-muted">企業が安全に借入できる限度額を3つの視点から計算します。</p>
+                    
+                    <form id="loanForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="target_equity_ratio_loan" class="form-label">目標自己資本比率（%）</label>
+                                <input type="number" class="form-control" id="target_equity_ratio_loan" step="0.1" value="30.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="collateral_ratio" class="form-label">担保掛目（%）</label>
+                                <input type="number" class="form-control" id="collateral_ratio" step="0.1" value="70.0">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="repayment_period" class="form-label">返済期間（年）</label>
+                                <input type="number" class="form-control" id="repayment_period" min="1" max="30" value="10">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="runLoanAnalysis()">
+                            <i class="bi bi-play-circle"></i> 分析実行
+                        </button>
+                    </form>
+                    
+                    <div id="loanResults" class="mt-4"></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 企業を選択してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function runMultiYearSimulation() {
+    const companyId = document.getElementById('companySelect').value;
+    if (!companyId) {
+        alert('企業を選択してください');
+        return;
+    }
+    
+    document.getElementById('multiYearResults').innerHTML = `
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 複数年度経営計画シミュレーションを実行しました。（実装予定）
+        </div>
+    `;
+}
+
+function runRetentionSimulation() {
+    const companyId = document.getElementById('companySelect').value;
+    if (!companyId) {
+        alert('企業を選択してください');
+        return;
+    }
+    
+    document.getElementById('retentionResults').innerHTML = `
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 内部留保シミュレーションを実行しました。（実装予定）
+        </div>
+    `;
+}
+
+function runLoanAnalysis() {
+    const companyId = document.getElementById('companySelect').value;
+    if (!companyId) {
+        alert('企業を選択してください');
+        return;
+    }
+    
+    document.getElementById('loanResults').innerHTML = `
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 借入金許容限度額分析を実行しました。（実装予定）
+        </div>
+    `;
+}
+</script>
+{% endblock %}

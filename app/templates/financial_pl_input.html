@@ -1,0 +1,115 @@
+{% extends "financial_base.html" %}
+
+{% block title %}損益計算書入力 - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h4><i class="bi bi-file-earmark-text"></i> 損益計算書（P/L）入力</h4>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" onchange="location.href='{{ url_for('financial_ui.pl_input') }}?company_id=' + this.value">
+                        <option value="">企業を選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}" {% if selected_company and selected_company.id == company.id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if selected_company %}
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" onchange="location.href='{{ url_for('financial_ui.pl_input') }}?company_id={{ selected_company.id }}&fiscal_year_id=' + this.value">
+                        <option value="">会計年度を選択してください</option>
+                        {% for fy in fiscal_years %}
+                        <option value="{{ fy.id }}" {% if fiscal_year_id == fy.id %}selected{% endif %}>
+                            {{ fy.year }}年度
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if fiscal_year_id %}
+            <form id="plForm" method="POST" action="/api/profit-loss/">
+                <input type="hidden" name="fiscal_year_id" value="{{ fiscal_year_id }}">
+                
+                <h5 class="mt-4 mb-3">売上・売上原価</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="sales" class="form-label">売上高</label>
+                        <input type="number" class="form-control" id="sales" name="sales" value="{{ pl_data.sales if pl_data else '' }}" step="0.01">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="cost_of_sales" class="form-label">売上原価</label>
+                        <input type="number" class="form-control" id="cost_of_sales" name="cost_of_sales" value="{{ pl_data.cost_of_sales if pl_data else '' }}" step="0.01">
+                    </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">販売費及び一般管理費</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="selling_general_admin_expenses" class="form-label">販売費及び一般管理費</label>
+                        <input type="number" class="form-control" id="selling_general_admin_expenses" name="selling_general_admin_expenses" value="{{ pl_data.selling_general_admin_expenses if pl_data else '' }}" step="0.01">
+                    </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">営業外損益</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="non_operating_income" class="form-label">営業外収益</label>
+                        <input type="number" class="form-control" id="non_operating_income" name="non_operating_income" value="{{ pl_data.non_operating_income if pl_data else '' }}" step="0.01">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="non_operating_expenses" class="form-label">営業外費用</label>
+                        <input type="number" class="form-control" id="non_operating_expenses" name="non_operating_expenses" value="{{ pl_data.non_operating_expenses if pl_data else '' }}" step="0.01">
+                    </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">特別損益</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="extraordinary_income" class="form-label">特別利益</label>
+                        <input type="number" class="form-control" id="extraordinary_income" name="extraordinary_income" value="{{ pl_data.extraordinary_income if pl_data else '' }}" step="0.01">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="extraordinary_loss" class="form-label">特別損失</label>
+                        <input type="number" class="form-control" id="extraordinary_loss" name="extraordinary_loss" value="{{ pl_data.extraordinary_loss if pl_data else '' }}" step="0.01">
+                    </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">税金</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="income_taxes" class="form-label">法人税等</label>
+                        <input type="number" class="form-control" id="income_taxes" name="income_taxes" value="{{ pl_data.income_taxes if pl_data else '' }}" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('financial_ui.fiscal_years', company_id=selected_company.id) }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> 戻る
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> 保存
+                    </button>
+                </div>
+            </form>
+            {% elif selected_company %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 会計年度を選択してください。
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 企業を選択してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

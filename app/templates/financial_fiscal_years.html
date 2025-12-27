@@ -1,0 +1,122 @@
+{% extends "financial_base.html" %}
+
+{% block title %}会計年度管理 - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h4><i class="bi bi-calendar"></i> 会計年度管理</h4>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" onchange="location.href='{{ url_for('financial_ui.fiscal_years') }}?company_id=' + this.value">
+                        <option value="">企業を選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}" {% if selected_company and selected_company.id == company.id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if selected_company %}
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFiscalYearModal">
+                        <i class="bi bi-plus-circle"></i> 新規会計年度追加
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if fiscal_years %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>年度</th>
+                            <th>期間</th>
+                            <th>種別</th>
+                            <th>登録日</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fy in fiscal_years %}
+                        <tr>
+                            <td><strong>{{ fy.year }}年度</strong></td>
+                            <td>{{ fy.start_date.strftime('%Y-%m-%d') if fy.start_date else '-' }} 〜 {{ fy.end_date.strftime('%Y-%m-%d') if fy.end_date else '-' }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ fy.fiscal_period_type or '実績' }}</span>
+                            </td>
+                            <td>{{ fy.created_at.strftime('%Y-%m-%d') if fy.created_at else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('financial_ui.pl_input', company_id=selected_company.id, fiscal_year_id=fy.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-file-earmark-text"></i> P/L入力
+                                </a>
+                                <a href="{{ url_for('financial_ui.bs_input', company_id=selected_company.id, fiscal_year_id=fy.id) }}" class="btn btn-sm btn-success">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> B/S入力
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% elif selected_company %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 会計年度が登録されていません。新規会計年度を追加してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 新規会計年度追加モーダル -->
+{% if selected_company %}
+<div class="modal fade" id="addFiscalYearModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新規会計年度追加</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/api/fiscal-year/">
+                <div class="modal-body">
+                    <input type="hidden" name="company_id" value="{{ selected_company.id }}">
+                    
+                    <div class="mb-3">
+                        <label for="year" class="form-label">年度 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="year" name="year" required min="2000" max="2100" placeholder="例: 2023">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">開始日 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">終了日 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fiscal_period_type" class="form-label">種別</label>
+                        <select class="form-select" id="fiscal_period_type" name="fiscal_period_type">
+                            <option value="actual">実績</option>
+                            <option value="budget">予算</option>
+                            <option value="forecast">予測</option>
+                            <option value="simulation">シミュレーション</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">追加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

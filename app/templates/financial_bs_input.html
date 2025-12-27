@@ -1,0 +1,113 @@
+{% extends "financial_base.html" %}
+
+{% block title %}貸借対照表入力 - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h4><i class="bi bi-file-earmark-spreadsheet"></i> 貸借対照表（B/S）入力</h4>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" onchange="location.href='{{ url_for('financial_ui.bs_input') }}?company_id=' + this.value">
+                        <option value="">企業を選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}" {% if selected_company and selected_company.id == company.id %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if selected_company %}
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" onchange="location.href='{{ url_for('financial_ui.bs_input') }}?company_id={{ selected_company.id }}&fiscal_year_id=' + this.value">
+                        <option value="">会計年度を選択してください</option>
+                        {% for fy in fiscal_years %}
+                        <option value="{{ fy.id }}" {% if fiscal_year_id == fy.id %}selected{% endif %}>
+                            {{ fy.year }}年度
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if fiscal_year_id %}
+            <form id="bsForm" method="POST" action="/api/balance-sheet/">
+                <input type="hidden" name="fiscal_year_id" value="{{ fiscal_year_id }}">
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mt-4 mb-3 text-primary">資産の部</h5>
+                        
+                        <h6 class="mb-2">流動資産</h6>
+                        <div class="mb-3">
+                            <label for="current_assets" class="form-label">流動資産合計</label>
+                            <input type="number" class="form-control" id="current_assets" name="current_assets" value="{{ bs_data.current_assets if bs_data else '' }}" step="0.01">
+                        </div>
+                        
+                        <h6 class="mb-2 mt-3">固定資産</h6>
+                        <div class="mb-3">
+                            <label for="fixed_assets" class="form-label">固定資産合計</label>
+                            <input type="number" class="form-control" id="fixed_assets" name="fixed_assets" value="{{ bs_data.fixed_assets if bs_data else '' }}" step="0.01">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="total_assets" class="form-label"><strong>資産合計</strong></label>
+                            <input type="number" class="form-control" id="total_assets" name="total_assets" value="{{ bs_data.total_assets if bs_data else '' }}" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5 class="mt-4 mb-3 text-danger">負債・純資産の部</h5>
+                        
+                        <h6 class="mb-2">流動負債</h6>
+                        <div class="mb-3">
+                            <label for="current_liabilities" class="form-label">流動負債合計</label>
+                            <input type="number" class="form-control" id="current_liabilities" name="current_liabilities" value="{{ bs_data.current_liabilities if bs_data else '' }}" step="0.01">
+                        </div>
+                        
+                        <h6 class="mb-2 mt-3">固定負債</h6>
+                        <div class="mb-3">
+                            <label for="fixed_liabilities" class="form-label">固定負債合計</label>
+                            <input type="number" class="form-control" id="fixed_liabilities" name="fixed_liabilities" value="{{ bs_data.fixed_liabilities if bs_data else '' }}" step="0.01">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="total_liabilities" class="form-label"><strong>負債合計</strong></label>
+                            <input type="number" class="form-control" id="total_liabilities" name="total_liabilities" value="{{ bs_data.total_liabilities if bs_data else '' }}" step="0.01">
+                        </div>
+                        
+                        <h6 class="mb-2 mt-3">純資産</h6>
+                        <div class="mb-3">
+                            <label for="total_equity" class="form-label">純資産合計</label>
+                            <input type="number" class="form-control" id="total_equity" name="total_equity" value="{{ bs_data.total_equity if bs_data else '' }}" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('financial_ui.fiscal_years', company_id=selected_company.id) }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> 戻る
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> 保存
+                    </button>
+                </div>
+            </form>
+            {% elif selected_company %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 会計年度を選択してください。
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 企業を選択してください。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
