@@ -43,6 +43,8 @@ class Company(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
+    industry = Column(String(100))  # 業種
+    employee_count = Column(Integer)  # 従業員数
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     
