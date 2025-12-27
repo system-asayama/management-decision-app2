@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}経営意思決定支援システム{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --success-color: #27ae60;
+      --warning-color: #f39c12;
+      --danger-color: #e74c3c;
+      --sidebar-width: 250px;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+    }
+    
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: var(--sidebar-width);
+      background-color: var(--primary-color);
+      color: white;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+    
+    .sidebar .logo {
+      padding: 1.5rem 1rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar .nav-link {
+      color: rgba(255, 255, 255, 0.8);
+      padding: 0.75rem 1rem;
+      border-left: 3px solid transparent;
+      transition: all 0.3s;
+    }
+    
+    .sidebar .nav-link:hover {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-left-color: var(--secondary-color);
+    }
+    
+    .sidebar .nav-link.active {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.15);
+      border-left-color: var(--secondary-color);
+    }
+    
+    .sidebar .nav-link i {
+      width: 20px;
+      margin-right: 0.5rem;
+    }
+    
+    .main-content {
+      margin-left: var(--sidebar-width);
+      padding: 2rem;
+    }
+    
+    .page-header {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      color: var(--primary-color);
+    }
+    
+    .page-header .breadcrumb {
+      margin: 0.5rem 0 0 0;
+      background: transparent;
+      padding: 0;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 600;
+      border-radius: 8px 8px 0 0 !important;
+    }
+    
+    .stat-card {
+      text-align: center;
+      padding: 1.5rem;
+    }
+    
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+    }
+    
+    .stat-card .stat-label {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    
+    .stat-card.primary { border-left: 4px solid var(--primary-color); }
+    .stat-card.success { border-left: 4px solid var(--success-color); }
+    .stat-card.warning { border-left: 4px solid var(--warning-color); }
+    .stat-card.danger { border-left: 4px solid var(--danger-color); }
+    
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    
+    .btn-primary:hover {
+      background-color: #1a252f;
+      border-color: #1a252f;
+    }
+    
+    .table {
+      background: white;
+    }
+    
+    .table thead {
+      background-color: #f8f9fa;
+    }
+    
+    .badge-growth {
+      background-color: var(--success-color);
+    }
+    
+    .badge-decline {
+      background-color: var(--danger-color);
+    }
+    
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 0;
+        transform: translateX(-100%);
+      }
+      
+      .main-content {
+        margin-left: 0;
+      }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <!-- サイドバー -->
+  <div class="sidebar">
+    <div class="logo">
+      <i class="bi bi-graph-up-arrow"></i> 経営分析システム
+    </div>
+    <nav class="nav flex-column">
+      <a class="nav-link {% if request.path == '/financial/dashboard' %}active{% endif %}" href="/financial/dashboard">
+        <i class="bi bi-speedometer2"></i> ダッシュボード
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/company') %}active{% endif %}" href="/financial/companies">
+        <i class="bi bi-building"></i> 企業管理
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/fiscal-year') %}active{% endif %}" href="/financial/fiscal-years">
+        <i class="bi bi-calendar-range"></i> 会計年度管理
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/pl') %}active{% endif %}" href="/financial/pl-input">
+        <i class="bi bi-file-earmark-text"></i> 損益計算書入力
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/bs') %}active{% endif %}" href="/financial/bs-input">
+        <i class="bi bi-file-earmark-spreadsheet"></i> 貸借対照表入力
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/analysis') %}active{% endif %}" href="/financial/analysis">
+        <i class="bi bi-bar-chart-line"></i> 経営分析
+      </a>
+      <a class="nav-link {% if request.path.startswith('/financial/simulation') %}active{% endif %}" href="/financial/simulation">
+        <i class="bi bi-graph-up"></i> シミュレーション
+      </a>
+      <hr style="border-color: rgba(255,255,255,0.1); margin: 1rem 0;">
+      <a class="nav-link" href="/admin/dashboard">
+        <i class="bi bi-house-door"></i> メインメニュー
+      </a>
+      <a class="nav-link" href="/auth/logout">
+        <i class="bi bi-box-arrow-right"></i> ログアウト
+      </a>
+    </nav>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="main-content">
+    {% if session.get('user_id') %}
+    <div class="d-flex justify-content-end mb-3">
+      <div class="text-end">
+        <small class="text-muted">ログイン中:</small>
+        <strong>{{ session.get('user_name', '') }}</strong>
+      </div>
+    </div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
