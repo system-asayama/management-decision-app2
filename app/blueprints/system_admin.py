@@ -769,7 +769,7 @@ def mypage():
     cur = conn.cursor()
     
     cur.execute(_sql(conn, '''
-        SELECT id, login_id, name, email, is_owner, can_manage_admins, created_at, updated_at
+        SELECT id, login_id, name, is_owner, can_manage_admins, created_at, updated_at
         FROM "T_管理者"
         WHERE id = %s AND role = %s
     '''), (user_id, ROLES["SYSTEM_ADMIN"]))
@@ -785,12 +785,11 @@ def mypage():
         'id': row[0],
         'login_id': row[1],
         'name': row[2],
-        'email': row[3],
-        'is_owner': row[4],
-        'can_manage_admins': row[5],
+        'is_owner': row[3],
+        'can_manage_admins': row[4],
         'role': ROLES["SYSTEM_ADMIN"],
-        'created_at': row[6],
-        'updated_at': row[7]
+        'created_at': row[5],
+        'updated_at': row[6]
     }
     
     # POSTリクエスト（プロフィール編集またはパスワード変更）
@@ -801,7 +800,6 @@ def mypage():
             # プロフィール編集
             login_id = request.form.get('login_id', '').strip()
             name = request.form.get('name', '').strip()
-            email = request.form.get('email', '').strip()
             
             if not login_id or not name:
                 conn.close()
@@ -818,9 +816,9 @@ def mypage():
             # プロフィール更新
             cur.execute(_sql(conn, '''
                 UPDATE "T_管理者"
-                SET login_id = %s, name = %s, email = %s, updated_at = CURRENT_TIMESTAMP
+                SET login_id = %s, name = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-            '''), (login_id, name, email, user_id))
+            '''), (login_id, name, user_id))
             conn.commit()
             conn.close()
             
