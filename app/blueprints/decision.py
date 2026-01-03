@@ -574,3 +574,163 @@ def balance_sheet_delete(id):
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ==================== ダッシュボード ====================
+
+@bp.route('/dashboard-analysis')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def dashboard_analysis():
+    """ダッシュボード分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        # 企業一覧を取得
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('dashboard_analysis.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/dashboard-analysis/data/<int:company_id>/<int:fiscal_year_id>')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def dashboard_analysis_data(company_id, fiscal_year_id):
+    """ダッシュボード分析データAPI"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        from app.utils.financial_calculator import calculate_all_ratios, get_ratio_status
+        
+        # 会計年度を確認
+        fiscal_year = db.query(FiscalYear).join(Company).filter(
+            FiscalYear.id == fiscal_year_id,
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'success': False, 'error': '会計年度が見つかりません'}), 404
+        
+        # 損益計算書を取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        # 貸借対照表を取得
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({
+                'success': False,
+                'error': '損益計算書または貸借対照表が登録されていません'
+            }), 404
+        
+        # 財務指標を計算
+        ratios = calculate_all_ratios(profit_loss, balance_sheet)
+        
+        # 各指標の状態を判定
+        ratios_with_status = {}
+        for category, indicators in ratios.items():
+            ratios_with_status[category] = {}
+            for name, value in indicators.items():
+                ratios_with_status[category][name] = {
+                    'value': value,
+                    'status': get_ratio_status(name, value)
+                }
+        
+        return jsonify({
+            'success': True,
+            'company_name': fiscal_year.company.name,
+            'fiscal_year_name': fiscal_year.year_name,
+            'profit_loss': {
+                'sales': profit_loss.sales,
+                'cost_of_sales': profit_loss.cost_of_sales,
+                'gross_profit': profit_loss.gross_profit,
+                'operating_expenses': profit_loss.operating_expenses,
+                'operating_income': profit_loss.operating_income,
+                'ordinary_income': profit_loss.ordinary_income,
+                'net_income': profit_loss.net_income
+            },
+            'balance_sheet': {
+                'current_assets': balance_sheet.current_assets,
+                'fixed_assets': balance_sheet.fixed_assets,
+                'total_assets': balance_sheet.total_assets,
+                'current_liabilities': balance_sheet.current_liabilities,
+                'fixed_liabilities': balance_sheet.fixed_liabilities,
+                'total_liabilities': balance_sheet.total_liabilities,
+                'total_equity': balance_sheet.total_equity
+            },
+            'ratios': ratios_with_status
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/dashboard-analysis/multi-year/<int:company_id>')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def dashboard_multi_year_data(company_id):
+    """複数年度データAPI"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        
+        # 企業を確認
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).filter(
+            FiscalYear.company_id == company_id
+        ).order_by(FiscalYear.year).all()
+        
+        multi_year_data = []
+        for fy in fiscal_years:
+            profit_loss = db.query(ProfitLossStatement).filter(
+                ProfitLossStatement.fiscal_year_id == fy.id
+            ).first()
+            
+            balance_sheet = db.query(BalanceSheet).filter(
+                BalanceSheet.fiscal_year_id == fy.id
+            ).first()
+            
+            if profit_loss and balance_sheet:
+                multi_year_data.append({
+                    'fiscal_year_name': fy.year_name,
+                    'sales': profit_loss.sales,
+                    'operating_income': profit_loss.operating_income,
+                    'ordinary_income': profit_loss.ordinary_income,
+                    'net_income': profit_loss.net_income,
+                    'total_assets': balance_sheet.total_assets,
+                    'total_liabilities': balance_sheet.total_liabilities,
+                    'total_equity': balance_sheet.total_equity
+                })
+        
+        return jsonify({
+            'success': True,
+            'company_name': company.name,
+            'data': multi_year_data
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
