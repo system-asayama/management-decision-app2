@@ -126,6 +126,74 @@ def run_migrations():
             conn.rollback()
             raise
         
+        # マイグレーション4: T_管理者テーブルにemailカラムを追加
+        print("\n[マイグレーション] T_管理者テーブルにemailカラムを追加...")
+        
+        try:
+            if _is_pg(conn):
+                # PostgreSQL: カラムが存在するか確認
+                cur.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'T_管理者' AND column_name = 'email'
+                """)
+                if not cur.fetchone():
+                    print("  - emailカラムが存在しません。追加します...")
+                    cur.execute('ALTER TABLE "T_管理者" ADD COLUMN email TEXT')
+                    conn.commit()
+                    print("  ✅ T_管理者テーブルにemailカラムを追加しました")
+                else:
+                    print("  ℹ️  emailカラムは既に存在します（スキップ）")
+            else:
+                # SQLite: PRAGMAでカラムを確認
+                cur.execute('PRAGMA table_info("T_管理者")')
+                columns = [row[1] for row in cur.fetchall()]
+                if 'email' not in columns:
+                    print("  - emailカラムが存在しません。追加します...")
+                    cur.execute('ALTER TABLE "T_管理者" ADD COLUMN email TEXT')
+                    conn.commit()
+                    print("  ✅ T_管理者テーブルにemailカラムを追加しました")
+                else:
+                    print("  ℹ️  emailカラムは既に存在します（スキップ）")
+        except Exception as e:
+            print(f"  ⚠️  マイグレーションエラー: {e}")
+            conn.rollback()
+            raise
+        
+        # マイグレーション5: T_管理者テーブルにopenai_api_keyカラムを追加
+        print("\n[マイグレーション] T_管理者テーブルにopenai_api_keyカラムを追加...")
+        
+        try:
+            if _is_pg(conn):
+                # PostgreSQL: カラムが存在するか確認
+                cur.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'T_管理者' AND column_name = 'openai_api_key'
+                """)
+                if not cur.fetchone():
+                    print("  - openai_api_keyカラムが存在しません。追加します...")
+                    cur.execute('ALTER TABLE "T_管理者" ADD COLUMN openai_api_key TEXT DEFAULT NULL')
+                    conn.commit()
+                    print("  ✅ T_管理者テーブルにopenai_api_keyカラムを追加しました")
+                else:
+                    print("  ℹ️  openai_api_keyカラムは既に存在します（スキップ）")
+            else:
+                # SQLite: PRAGMAでカラムを確認
+                cur.execute('PRAGMA table_info("T_管理者")')
+                columns = [row[1] for row in cur.fetchall()]
+                if 'openai_api_key' not in columns:
+                    print("  - openai_api_keyカラムが存在しません。追加します...")
+                    cur.execute('ALTER TABLE "T_管理者" ADD COLUMN openai_api_key TEXT DEFAULT NULL')
+                    conn.commit()
+                    print("  ✅ T_管理者テーブルにopenai_api_keyカラムを追加しました")
+                else:
+                    print("  ℹ️  openai_api_keyカラムは既に存在します（スキップ）")
+        except Exception as e:
+            print(f"  ⚠️  マイグレーションエラー: {e}")
+            conn.rollback()
+            raise
+        
         conn.close()
         
         print("\n" + "=" * 60)
