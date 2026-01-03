@@ -3,8 +3,8 @@
 財務データ入力、経営分析、シミュレーションのWebインターフェースを提供
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from app.database import get_db_session
-from app.models import Company, FiscalYear, ProfitLossStatement, BalanceSheet
+from app.db import SessionLocal
+from app.models_decision import Company, FiscalYear, ProfitLossStatement, BalanceSheet
 from functools import wraps
 
 financial_ui_bp = Blueprint('financial_ui', __name__, url_prefix='/financial')
@@ -25,7 +25,7 @@ def login_required(f):
 @login_required
 def dashboard():
     """財務管理ダッシュボード"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 企業一覧を取得
         companies = db.query(Company).all()
@@ -121,7 +121,7 @@ def dashboard():
 @login_required
 def companies():
     """企業一覧"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         return render_template('financial_companies.html', companies=companies)
@@ -134,7 +134,7 @@ def companies():
 def company_new():
     """企業新規登録"""
     if request.method == 'POST':
-        db = get_db_session()
+        db = SessionLocal()
         try:
             company = Company(
                 name=request.form['name'],
@@ -160,7 +160,7 @@ def fiscal_years():
     """会計年度一覧"""
     company_id = request.args.get('company_id', type=int)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         selected_company = None
@@ -189,7 +189,7 @@ def pl_input():
     company_id = request.args.get('company_id', type=int)
     fiscal_year_id = request.args.get('fiscal_year_id', type=int)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         selected_company = None
@@ -226,7 +226,7 @@ def bs_input():
     company_id = request.args.get('company_id', type=int)
     fiscal_year_id = request.args.get('fiscal_year_id', type=int)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         selected_company = None
@@ -262,7 +262,7 @@ def analysis():
     """経営分析"""
     company_id = request.args.get('company_id', type=int)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         selected_company = None
@@ -285,7 +285,7 @@ def simulation():
     """シミュレーション"""
     company_id = request.args.get('company_id', type=int)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).all()
         selected_company = None

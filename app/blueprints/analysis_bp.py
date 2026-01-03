@@ -3,8 +3,8 @@
 4つの視点（成長力、収益力、資金力、生産力）から経営指標を計算する
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import (
+from app.db import SessionLocal
+from app.models_decision import (
     FiscalYear, ProfitLossStatement, BalanceSheet,
     RestructuredPL, RestructuredBS, FinancialIndicator
 )
@@ -117,7 +117,7 @@ def get_financial_data(fiscal_year_id: int, db):
 @analysis_bp.route('/growth/<int:fiscal_year_id>', methods=['GET'])
 def calculate_growth_indicators(fiscal_year_id):
     """成長力の指標を計算"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 当年度の会計年度を取得
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
@@ -159,7 +159,7 @@ def calculate_growth_indicators(fiscal_year_id):
 @analysis_bp.route('/profitability/<int:fiscal_year_id>', methods=['GET'])
 def calculate_profitability_indicators(fiscal_year_id):
     """収益力の指標を計算"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 財務データを取得
         data = get_financial_data(fiscal_year_id, db)
@@ -182,7 +182,7 @@ def calculate_profitability_indicators(fiscal_year_id):
 @analysis_bp.route('/financial-strength/<int:fiscal_year_id>', methods=['GET'])
 def calculate_financial_strength_indicators(fiscal_year_id):
     """資金力の指標を計算"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 財務データを取得
         data = get_financial_data(fiscal_year_id, db)
@@ -208,7 +208,7 @@ def calculate_productivity_indicators(fiscal_year_id):
     data_from_request = request.get_json() or {}
     employee_count = data_from_request.get('employee_count', 1)
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 財務データを取得
         data = get_financial_data(fiscal_year_id, db)
@@ -238,7 +238,7 @@ def calculate_all_indicators(fiscal_year_id):
     data_from_request = request.args
     employee_count = int(data_from_request.get('employee_count', 1))
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 当年度の会計年度を取得
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
@@ -286,7 +286,7 @@ def save_indicators(fiscal_year_id):
     if 'indicators' not in data:
         return jsonify({'error': 'indicatorsは必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 会計年度の存在確認
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()

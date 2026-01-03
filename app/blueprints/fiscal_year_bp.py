@@ -3,8 +3,8 @@
 会計年度の作成、取得、更新、削除を行う
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import FiscalYear, Company
+from app.db import SessionLocal
+from app.models_decision import FiscalYear, Company
 from datetime import datetime
 
 fiscal_year_bp = Blueprint('fiscal_year', __name__, url_prefix='/api/fiscal-year')
@@ -20,7 +20,7 @@ def create_fiscal_year():
         if field not in data:
             return jsonify({'error': f'{field}は必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 企業の存在確認
         company = db.query(Company).filter(Company.id == data['company_id']).first()
@@ -60,7 +60,7 @@ def create_fiscal_year():
 @fiscal_year_bp.route('/company/<int:company_id>', methods=['GET'])
 def list_fiscal_years_by_company(company_id):
     """企業別の会計年度一覧を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         fiscal_years = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
@@ -84,7 +84,7 @@ def list_fiscal_years_by_company(company_id):
 @fiscal_year_bp.route('/<int:fiscal_year_id>', methods=['GET'])
 def get_fiscal_year(fiscal_year_id):
     """会計年度詳細を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
         
@@ -111,7 +111,7 @@ def update_fiscal_year(fiscal_year_id):
     """会計年度情報を更新"""
     data = request.get_json()
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
         
@@ -149,7 +149,7 @@ def update_fiscal_year(fiscal_year_id):
 @fiscal_year_bp.route('/<int:fiscal_year_id>', methods=['DELETE'])
 def delete_fiscal_year(fiscal_year_id):
     """会計年度を削除"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
         

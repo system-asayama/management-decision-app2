@@ -3,8 +3,8 @@
 損益計算書の保存と取得を行う
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import ProfitLossStatement, FiscalYear
+from app.db import SessionLocal
+from app.models_decision import ProfitLossStatement, FiscalYear
 from datetime import datetime
 
 profit_loss_bp = Blueprint('profit_loss', __name__, url_prefix='/api/profit-loss')
@@ -18,7 +18,7 @@ def save_profit_loss():
     if 'fiscal_year_id' not in data:
         return jsonify({'error': 'fiscal_year_idは必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 会計年度の存在確認
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == data['fiscal_year_id']).first()
@@ -98,7 +98,7 @@ def save_profit_loss():
 @profit_loss_bp.route('/fiscal-year/<int:fiscal_year_id>', methods=['GET'])
 def get_profit_loss_by_fiscal_year(fiscal_year_id):
     """会計年度別の損益計算書を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         pl = db.query(ProfitLossStatement).filter(
             ProfitLossStatement.fiscal_year_id == fiscal_year_id
@@ -135,7 +135,7 @@ def get_profit_loss_by_fiscal_year(fiscal_year_id):
 @profit_loss_bp.route('/<int:pl_id>', methods=['DELETE'])
 def delete_profit_loss(pl_id):
     """損益計算書を削除"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         pl = db.query(ProfitLossStatement).filter(ProfitLossStatement.id == pl_id).first()
         

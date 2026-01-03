@@ -3,8 +3,8 @@
 標準的な財務諸表を経営分析用の組換え財務諸表に変換する
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import (
+from app.db import SessionLocal
+from app.models_decision import (
     FiscalYear, ProfitLossStatement, BalanceSheet,
     RestructuredPL, RestructuredBS
 )
@@ -23,7 +23,7 @@ def restructure_and_save_pl(fiscal_year_id):
     """
     data = request.get_json() or {}
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 会計年度の存在確認
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
@@ -145,7 +145,7 @@ def restructure_and_save_bs(fiscal_year_id):
     """
     data = request.get_json() or {}
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 会計年度の存在確認
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == fiscal_year_id).first()
@@ -238,7 +238,7 @@ def restructure_and_save_bs(fiscal_year_id):
 @restructuring_bp.route('/pl/<int:fiscal_year_id>', methods=['GET'])
 def get_restructured_pl(fiscal_year_id):
     """組換えP/Lを取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         restructured_pl = db.query(RestructuredPL).filter(
             RestructuredPL.fiscal_year_id == fiscal_year_id
@@ -275,7 +275,7 @@ def get_restructured_pl(fiscal_year_id):
 @restructuring_bp.route('/bs/<int:fiscal_year_id>', methods=['GET'])
 def get_restructured_bs(fiscal_year_id):
     """組換えB/Sを取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         restructured_bs = db.query(RestructuredBS).filter(
             RestructuredBS.fiscal_year_id == fiscal_year_id

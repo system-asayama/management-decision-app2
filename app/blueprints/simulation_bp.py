@@ -3,8 +3,8 @@
 複数年度の経営予測、内部留保シミュレーション、借入金許容限度額分析などを提供
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import (
+from app.db import SessionLocal
+from app.models_decision import (
     FiscalYear, ProfitLossStatement, BalanceSheet,
     Simulation, SimulationResult
 )
@@ -63,7 +63,7 @@ def simulate_multi_year(fiscal_year_id):
     """複数年度の経営計画をシミュレーション"""
     data = request.get_json()
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 基準データを取得
         base_data = get_base_data(fiscal_year_id, db)
@@ -124,7 +124,7 @@ def simulate_internal_reserve(fiscal_year_id):
     """内部留保シミュレーション"""
     data = request.get_json()
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 基準データを取得
         base_data = get_base_data(fiscal_year_id, db)
@@ -153,7 +153,7 @@ def calculate_borrowing_capacity(fiscal_year_id):
     """借入金許容限度額を計算"""
     data = request.get_json()
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 基準データを取得
         base_data = get_base_data(fiscal_year_id, db)
@@ -181,7 +181,7 @@ def simulate_break_even(fiscal_year_id):
     """損益分岐点分析"""
     data = request.get_json()
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 基準データを取得
         base_data = get_base_data(fiscal_year_id, db)
@@ -227,7 +227,7 @@ def simulate_differential_analysis():
 @simulation_bp.route('/list/<int:fiscal_year_id>', methods=['GET'])
 def list_simulations(fiscal_year_id):
     """会計年度のシミュレーション一覧を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         simulations = db.query(Simulation).filter(
             Simulation.fiscal_year_id == fiscal_year_id
@@ -253,7 +253,7 @@ def list_simulations(fiscal_year_id):
 @simulation_bp.route('/<int:simulation_id>', methods=['GET'])
 def get_simulation(simulation_id):
     """シミュレーション結果を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         simulation = db.query(Simulation).filter(Simulation.id == simulation_id).first()
         if not simulation:
@@ -299,7 +299,7 @@ def get_simulation(simulation_id):
 @simulation_bp.route('/<int:simulation_id>', methods=['DELETE'])
 def delete_simulation(simulation_id):
     """シミュレーションを削除"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         simulation = db.query(Simulation).filter(Simulation.id == simulation_id).first()
         if not simulation:

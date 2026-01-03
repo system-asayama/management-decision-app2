@@ -200,55 +200,55 @@ def create_app() -> Flask:
         print(f"⚠️ decision blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.company_bp import bp as company_bp
+        from .blueprints.company_bp import company_bp
         app.register_blueprint(company_bp)
     except Exception as e:
         print(f"⚠️ company blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.fiscal_year_bp import bp as fiscal_year_bp
+        from .blueprints.fiscal_year_bp import fiscal_year_bp
         app.register_blueprint(fiscal_year_bp)
     except Exception as e:
         print(f"⚠️ fiscal_year blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.profit_loss_bp import bp as profit_loss_bp
+        from .blueprints.profit_loss_bp import profit_loss_bp
         app.register_blueprint(profit_loss_bp)
     except Exception as e:
         print(f"⚠️ profit_loss blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.balance_sheet_bp import bp as balance_sheet_bp
+        from .blueprints.balance_sheet_bp import balance_sheet_bp
         app.register_blueprint(balance_sheet_bp)
     except Exception as e:
         print(f"⚠️ balance_sheet blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.restructuring_bp import bp as restructuring_bp
+        from .blueprints.restructuring_bp import restructuring_bp
         app.register_blueprint(restructuring_bp)
     except Exception as e:
         print(f"⚠️ restructuring blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.analysis_bp import bp as analysis_bp
+        from .blueprints.analysis_bp import analysis_bp
         app.register_blueprint(analysis_bp)
     except Exception as e:
         print(f"⚠️ analysis blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.simulation_bp import bp as simulation_bp
+        from .blueprints.simulation_bp import simulation_bp
         app.register_blueprint(simulation_bp)
     except Exception as e:
         print(f"⚠️ simulation blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.dashboard_bp import bp as dashboard_bp
+        from .blueprints.dashboard_bp import dashboard_bp
         app.register_blueprint(dashboard_bp)
     except Exception as e:
         print(f"⚠️ dashboard blueprint 登録エラー: {e}")
 
     try:
-        from .blueprints.financial_ui_bp import bp as financial_ui_bp
+        from .blueprints.financial_ui_bp import financial_ui_bp
         app.register_blueprint(financial_ui_bp)
     except Exception as e:
         print(f"⚠️ financial_ui blueprint 登録エラー: {e}")

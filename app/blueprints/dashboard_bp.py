@@ -3,8 +3,8 @@
 ダッシュボード用のサマリーデータを提供
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import Company, FiscalYear, ProfitLossStatement, BalanceSheet
+from app.db import SessionLocal
+from app.models_decision import Company, FiscalYear, ProfitLossStatement, BalanceSheet
 from sqlalchemy import func, desc
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/api/dashboard')
@@ -13,7 +13,7 @@ dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/api/dashboard')
 @dashboard_bp.route('/summary/<int:company_id>', methods=['GET'])
 def get_dashboard_summary(company_id):
     """ダッシュボード用サマリーデータを取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 企業情報
         company = db.query(Company).filter(Company.id == company_id).first()
@@ -85,7 +85,7 @@ def get_dashboard_summary(company_id):
 @dashboard_bp.route('/comparison/<int:company_id>', methods=['GET'])
 def get_multi_year_comparison(company_id):
     """複数年度の財務データ比較を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 最新3年度を取得
         fiscal_years = db.query(FiscalYear).filter(

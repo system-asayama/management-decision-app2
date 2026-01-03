@@ -3,8 +3,8 @@
 企業の作成、取得、更新、削除を行う
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import Company
+from app.db import SessionLocal
+from app.models_decision import Company
 from datetime import datetime
 
 company_bp = Blueprint('company', __name__, url_prefix='/api/company')
@@ -18,7 +18,7 @@ def create_company():
     if not data or 'name' not in data:
         return jsonify({'error': '企業名は必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         company = Company(
             name=data['name']
@@ -43,7 +43,7 @@ def create_company():
 @company_bp.route('/', methods=['GET'])
 def list_companies():
     """企業一覧を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         companies = db.query(Company).order_by(Company.created_at.desc()).all()
         
@@ -62,7 +62,7 @@ def list_companies():
 @company_bp.route('/<int:company_id>', methods=['GET'])
 def get_company(company_id):
     """企業詳細を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         company = db.query(Company).filter(Company.id == company_id).first()
         
@@ -89,7 +89,7 @@ def update_company(company_id):
     if not data or 'name' not in data:
         return jsonify({'error': '企業名は必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         company = db.query(Company).filter(Company.id == company_id).first()
         
@@ -117,7 +117,7 @@ def update_company(company_id):
 @company_bp.route('/<int:company_id>', methods=['DELETE'])
 def delete_company(company_id):
     """企業を削除"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         company = db.query(Company).filter(Company.id == company_id).first()
         

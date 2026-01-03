@@ -3,8 +3,8 @@
 貸借対照表の保存と取得を行う
 """
 from flask import Blueprint, request, jsonify
-from app.database import get_db_session
-from app.models import BalanceSheet, FiscalYear
+from app.db import SessionLocal
+from app.models_decision import BalanceSheet, FiscalYear
 from datetime import datetime
 
 balance_sheet_bp = Blueprint('balance_sheet', __name__, url_prefix='/api/balance-sheet')
@@ -18,7 +18,7 @@ def save_balance_sheet():
     if 'fiscal_year_id' not in data:
         return jsonify({'error': 'fiscal_year_idは必須です'}), 400
     
-    db = get_db_session()
+    db = SessionLocal()
     try:
         # 会計年度の存在確認
         fiscal_year = db.query(FiscalYear).filter(FiscalYear.id == data['fiscal_year_id']).first()
@@ -86,7 +86,7 @@ def save_balance_sheet():
 @balance_sheet_bp.route('/fiscal-year/<int:fiscal_year_id>', methods=['GET'])
 def get_balance_sheet_by_fiscal_year(fiscal_year_id):
     """会計年度別の貸借対照表を取得"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         bs = db.query(BalanceSheet).filter(
             BalanceSheet.fiscal_year_id == fiscal_year_id
@@ -119,7 +119,7 @@ def get_balance_sheet_by_fiscal_year(fiscal_year_id):
 @balance_sheet_bp.route('/<int:bs_id>', methods=['DELETE'])
 def delete_balance_sheet(bs_id):
     """貸借対照表を削除"""
-    db = get_db_session()
+    db = SessionLocal()
     try:
         bs = db.query(BalanceSheet).filter(BalanceSheet.id == bs_id).first()
         
