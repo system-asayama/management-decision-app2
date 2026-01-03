@@ -677,6 +677,49 @@ def dashboard_analysis_data(company_id, fiscal_year_id):
         db.close()
 
 
+@bp.route('/fiscal-years/by-company/<int:company_id>')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def get_fiscal_years_by_company(company_id):
+    """企業に紐づく会計年度一覧を取得するAPI"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    db = SessionLocal()
+    try:
+        # 企業を確認
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).filter(
+            FiscalYear.company_id == company_id
+        ).order_by(FiscalYear.start_date.desc()).all()
+        
+        fiscal_year_list = []
+        for fy in fiscal_years:
+            fiscal_year_list.append({
+                'id': fy.id,
+                'year_name': fy.year_name,
+                'start_date': fy.start_date.strftime('%Y-%m-%d'),
+                'end_date': fy.end_date.strftime('%Y-%m-%d')
+            })
+        
+        return jsonify({
+            'success': True,
+            'fiscal_years': fiscal_year_list
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
 @bp.route('/dashboard-analysis/multi-year/<int:company_id>')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
 def dashboard_multi_year_data(company_id):
