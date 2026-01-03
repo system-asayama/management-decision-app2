@@ -280,3 +280,297 @@ def fiscal_year_delete(fiscal_year_id):
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ==================== 損益計算書管理 ====================
+
+@bp.route('/profit-loss')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def profit_loss_list():
+    """損益計算書一覧ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement
+        profit_loss_statements = db.query(ProfitLossStatement).join(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        return render_template('profit_loss_list.html', profit_loss_statements=profit_loss_statements)
+    finally:
+        db.close()
+
+
+@bp.route('/profit-loss/new', methods=['GET', 'POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def profit_loss_new():
+    """損益計算書新規登録ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        
+        if request.method == 'POST':
+            try:
+                profit_loss = ProfitLossStatement(
+                    fiscal_year_id=int(request.form.get('fiscal_year_id')),
+                    sales=int(request.form.get('sales') or 0),
+                    cost_of_sales=int(request.form.get('cost_of_sales') or 0),
+                    gross_profit=int(request.form.get('gross_profit') or 0),
+                    operating_expenses=int(request.form.get('operating_expenses') or 0),
+                    operating_income=int(request.form.get('operating_income') or 0),
+                    non_operating_income=int(request.form.get('non_operating_income') or 0),
+                    non_operating_expenses=int(request.form.get('non_operating_expenses') or 0),
+                    ordinary_income=int(request.form.get('ordinary_income') or 0),
+                    extraordinary_income=int(request.form.get('extraordinary_income') or 0),
+                    extraordinary_loss=int(request.form.get('extraordinary_loss') or 0),
+                    income_before_tax=int(request.form.get('income_before_tax') or 0),
+                    income_tax=int(request.form.get('income_tax') or 0),
+                    net_income=int(request.form.get('net_income') or 0)
+                )
+                db.add(profit_loss)
+                db.commit()
+                return redirect(url_for('decision.profit_loss_list'))
+            except Exception as e:
+                db.rollback()
+                return render_template('profit_loss_form.html', fiscal_years=fiscal_years, error=str(e))
+        
+        return render_template('profit_loss_form.html', fiscal_years=fiscal_years, profit_loss=None)
+    finally:
+        db.close()
+
+
+@bp.route('/profit-loss/<int:id>/edit', methods=['GET', 'POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def profit_loss_edit(id):
+    """損益計算書編集ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        
+        # 損益計算書を取得
+        profit_loss = db.query(ProfitLossStatement).join(FiscalYear).join(Company).filter(
+            ProfitLossStatement.id == id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not profit_loss:
+            return redirect(url_for('decision.profit_loss_list'))
+        
+        if request.method == 'POST':
+            try:
+                profit_loss.fiscal_year_id = int(request.form.get('fiscal_year_id'))
+                profit_loss.sales = int(request.form.get('sales') or 0)
+                profit_loss.cost_of_sales = int(request.form.get('cost_of_sales') or 0)
+                profit_loss.gross_profit = int(request.form.get('gross_profit') or 0)
+                profit_loss.operating_expenses = int(request.form.get('operating_expenses') or 0)
+                profit_loss.operating_income = int(request.form.get('operating_income') or 0)
+                profit_loss.non_operating_income = int(request.form.get('non_operating_income') or 0)
+                profit_loss.non_operating_expenses = int(request.form.get('non_operating_expenses') or 0)
+                profit_loss.ordinary_income = int(request.form.get('ordinary_income') or 0)
+                profit_loss.extraordinary_income = int(request.form.get('extraordinary_income') or 0)
+                profit_loss.extraordinary_loss = int(request.form.get('extraordinary_loss') or 0)
+                profit_loss.income_before_tax = int(request.form.get('income_before_tax') or 0)
+                profit_loss.income_tax = int(request.form.get('income_tax') or 0)
+                profit_loss.net_income = int(request.form.get('net_income') or 0)
+                db.commit()
+                return redirect(url_for('decision.profit_loss_list'))
+            except Exception as e:
+                db.rollback()
+                return render_template('profit_loss_form.html', fiscal_years=fiscal_years, profit_loss=profit_loss, error=str(e))
+        
+        return render_template('profit_loss_form.html', fiscal_years=fiscal_years, profit_loss=profit_loss)
+    finally:
+        db.close()
+
+
+@bp.route('/profit-loss/<int:id>', methods=['DELETE'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def profit_loss_delete(id):
+    """損益計算書削除API"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement
+        
+        profit_loss = db.query(ProfitLossStatement).join(FiscalYear).join(Company).filter(
+            ProfitLossStatement.id == id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not profit_loss:
+            return jsonify({'success': False, 'error': '損益計算書が見つかりません'}), 404
+        
+        db.delete(profit_loss)
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+# ==================== 貸借対照表管理 ====================
+
+@bp.route('/balance-sheets')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def balance_sheet_list():
+    """貸借対照表一覧ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import BalanceSheet
+        balance_sheets = db.query(BalanceSheet).join(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        return render_template('balance_sheet_list.html', balance_sheets=balance_sheets)
+    finally:
+        db.close()
+
+
+@bp.route('/balance-sheets/new', methods=['GET', 'POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def balance_sheet_new():
+    """貸借対照表新規登録ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import BalanceSheet
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        
+        if request.method == 'POST':
+            try:
+                balance_sheet = BalanceSheet(
+                    fiscal_year_id=int(request.form.get('fiscal_year_id')),
+                    current_assets=int(request.form.get('current_assets') or 0),
+                    fixed_assets=int(request.form.get('fixed_assets') or 0),
+                    total_assets=int(request.form.get('total_assets') or 0),
+                    current_liabilities=int(request.form.get('current_liabilities') or 0),
+                    fixed_liabilities=int(request.form.get('fixed_liabilities') or 0),
+                    total_liabilities=int(request.form.get('total_liabilities') or 0),
+                    capital=int(request.form.get('capital') or 0),
+                    retained_earnings=int(request.form.get('retained_earnings') or 0),
+                    total_equity=int(request.form.get('total_equity') or 0)
+                )
+                db.add(balance_sheet)
+                db.commit()
+                return redirect(url_for('decision.balance_sheet_list'))
+            except Exception as e:
+                db.rollback()
+                return render_template('balance_sheet_form.html', fiscal_years=fiscal_years, error=str(e))
+        
+        return render_template('balance_sheet_form.html', fiscal_years=fiscal_years, balance_sheet=None)
+    finally:
+        db.close()
+
+
+@bp.route('/balance-sheets/<int:id>/edit', methods=['GET', 'POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def balance_sheet_edit(id):
+    """貸借対照表編集ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return render_template('decision_no_tenant.html')
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import BalanceSheet
+        
+        # 会計年度一覧を取得
+        fiscal_years = db.query(FiscalYear).join(Company).filter(
+            Company.tenant_id == tenant_id
+        ).all()
+        
+        # 貸借対照表を取得
+        balance_sheet = db.query(BalanceSheet).join(FiscalYear).join(Company).filter(
+            BalanceSheet.id == id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not balance_sheet:
+            return redirect(url_for('decision.balance_sheet_list'))
+        
+        if request.method == 'POST':
+            try:
+                balance_sheet.fiscal_year_id = int(request.form.get('fiscal_year_id'))
+                balance_sheet.current_assets = int(request.form.get('current_assets') or 0)
+                balance_sheet.fixed_assets = int(request.form.get('fixed_assets') or 0)
+                balance_sheet.total_assets = int(request.form.get('total_assets') or 0)
+                balance_sheet.current_liabilities = int(request.form.get('current_liabilities') or 0)
+                balance_sheet.fixed_liabilities = int(request.form.get('fixed_liabilities') or 0)
+                balance_sheet.total_liabilities = int(request.form.get('total_liabilities') or 0)
+                balance_sheet.capital = int(request.form.get('capital') or 0)
+                balance_sheet.retained_earnings = int(request.form.get('retained_earnings') or 0)
+                balance_sheet.total_equity = int(request.form.get('total_equity') or 0)
+                db.commit()
+                return redirect(url_for('decision.balance_sheet_list'))
+            except Exception as e:
+                db.rollback()
+                return render_template('balance_sheet_form.html', fiscal_years=fiscal_years, balance_sheet=balance_sheet, error=str(e))
+        
+        return render_template('balance_sheet_form.html', fiscal_years=fiscal_years, balance_sheet=balance_sheet)
+    finally:
+        db.close()
+
+
+@bp.route('/balance-sheets/<int:id>', methods=['DELETE'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"])
+def balance_sheet_delete(id):
+    """貸借対照表削除API"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import BalanceSheet
+        
+        balance_sheet = db.query(BalanceSheet).join(FiscalYear).join(Company).filter(
+            BalanceSheet.id == id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not balance_sheet:
+            return jsonify({'success': False, 'error': '貸借対照表が見つかりません'}), 404
+        
+        db.delete(balance_sheet)
+        db.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()

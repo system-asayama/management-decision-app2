@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}{% if profit_loss %}損益計算書編集{% else %}損益計算書登録{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">{% if profit_loss %}損益計算書編集{% else %}損益計算書登録{% endif %}</h1>
+        
+        <p class="text-gray-600 mb-6">損益計算書の情報を入力してください。</p>
+        
+        <form method="POST" class="bg-white rounded-lg shadow p-6">
+            <!-- 会計年度選択 -->
+            <div class="mb-6">
+                <label for="fiscal_year_id" class="block text-sm font-medium text-gray-700 mb-2">
+                    会計年度 <span class="text-red-500">*</span>
+                </label>
+                <select id="fiscal_year_id" name="fiscal_year_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <option value="">選択してください</option>
+                    {% for fy in fiscal_years %}
+                    <option value="{{ fy.id }}" {% if profit_loss and profit_loss.fiscal_year_id == fy.id %}selected{% endif %}>
+                        {{ fy.company.name }} - {{ fy.year_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- 売上関連 -->
+            <div class="mb-6 border-b pb-6">
+                <h2 class="text-xl font-semibold mb-4 text-green-700">売上関連</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="sales" class="block text-sm font-medium text-gray-700 mb-2">
+                            売上高（円）
+                        </label>
+                        <input type="number" id="sales" name="sales" 
+                               value="{% if profit_loss %}{{ profit_loss.sales }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="cost_of_sales" class="block text-sm font-medium text-gray-700 mb-2">
+                            売上原価（円）
+                        </label>
+                        <input type="number" id="cost_of_sales" name="cost_of_sales" 
+                               value="{% if profit_loss %}{{ profit_loss.cost_of_sales }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="gross_profit" class="block text-sm font-medium text-gray-700 mb-2">
+                            売上総利益（円）
+                        </label>
+                        <input type="number" id="gross_profit" name="gross_profit" 
+                               value="{% if profit_loss %}{{ profit_loss.gross_profit }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 営業関連 -->
+            <div class="mb-6 border-b pb-6">
+                <h2 class="text-xl font-semibold mb-4 text-blue-700">営業関連</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="operating_expenses" class="block text-sm font-medium text-gray-700 mb-2">
+                            販売費及び一般管理費（円）
+                        </label>
+                        <input type="number" id="operating_expenses" name="operating_expenses" 
+                               value="{% if profit_loss %}{{ profit_loss.operating_expenses }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="operating_income" class="block text-sm font-medium text-gray-700 mb-2">
+                            営業利益（円）
+                        </label>
+                        <input type="number" id="operating_income" name="operating_income" 
+                               value="{% if profit_loss %}{{ profit_loss.operating_income }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 営業外損益 -->
+            <div class="mb-6 border-b pb-6">
+                <h2 class="text-xl font-semibold mb-4 text-purple-700">営業外損益</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="non_operating_income" class="block text-sm font-medium text-gray-700 mb-2">
+                            営業外収益（円）
+                        </label>
+                        <input type="number" id="non_operating_income" name="non_operating_income" 
+                               value="{% if profit_loss %}{{ profit_loss.non_operating_income }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="non_operating_expenses" class="block text-sm font-medium text-gray-700 mb-2">
+                            営業外費用（円）
+                        </label>
+                        <input type="number" id="non_operating_expenses" name="non_operating_expenses" 
+                               value="{% if profit_loss %}{{ profit_loss.non_operating_expenses }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="ordinary_income" class="block text-sm font-medium text-gray-700 mb-2">
+                            経常利益（円）
+                        </label>
+                        <input type="number" id="ordinary_income" name="ordinary_income" 
+                               value="{% if profit_loss %}{{ profit_loss.ordinary_income }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 特別損益 -->
+            <div class="mb-6 border-b pb-6">
+                <h2 class="text-xl font-semibold mb-4 text-orange-700">特別損益</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="extraordinary_income" class="block text-sm font-medium text-gray-700 mb-2">
+                            特別利益（円）
+                        </label>
+                        <input type="number" id="extraordinary_income" name="extraordinary_income" 
+                               value="{% if profit_loss %}{{ profit_loss.extraordinary_income }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="extraordinary_loss" class="block text-sm font-medium text-gray-700 mb-2">
+                            特別損失（円）
+                        </label>
+                        <input type="number" id="extraordinary_loss" name="extraordinary_loss" 
+                               value="{% if profit_loss %}{{ profit_loss.extraordinary_loss }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 税金・最終利益 -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-red-700">税金・最終利益</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="income_before_tax" class="block text-sm font-medium text-gray-700 mb-2">
+                            税引前当期純利益（円）
+                        </label>
+                        <input type="number" id="income_before_tax" name="income_before_tax" 
+                               value="{% if profit_loss %}{{ profit_loss.income_before_tax }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               readonly>
+                    </div>
+                    
+                    <div>
+                        <label for="income_tax" class="block text-sm font-medium text-gray-700 mb-2">
+                            法人税等（円）
+                        </label>
+                        <input type="number" id="income_tax" name="income_tax" 
+                               value="{% if profit_loss %}{{ profit_loss.income_tax }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label for="net_income" class="block text-sm font-medium text-gray-700 mb-2">
+                            当期純利益（円）
+                        </label>
+                        <input type="number" id="net_income" name="net_income" 
+                               value="{% if profit_loss %}{{ profit_loss.net_income }}{% else %}0{% endif %}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-100 font-bold text-lg"
+                               readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ボタン -->
+            <div class="flex gap-4">
+                <a href="{{ url_for('decision.profit_loss_list') }}" 
+                   class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    キャンセル
+                </a>
+                <button type="submit" 
+                        class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    {% if profit_loss %}更新{% else %}登録{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 自動計算機能
+document.addEventListener('DOMContentLoaded', function() {
+    const sales = document.getElementById('sales');
+    const costOfSales = document.getElementById('cost_of_sales');
+    const grossProfit = document.getElementById('gross_profit');
+    const operatingExpenses = document.getElementById('operating_expenses');
+    const operatingIncome = document.getElementById('operating_income');
+    const nonOperatingIncome = document.getElementById('non_operating_income');
+    const nonOperatingExpenses = document.getElementById('non_operating_expenses');
+    const ordinaryIncome = document.getElementById('ordinary_income');
+    const extraordinaryIncome = document.getElementById('extraordinary_income');
+    const extraordinaryLoss = document.getElementById('extraordinary_loss');
+    const incomeBeforeTax = document.getElementById('income_before_tax');
+    const incomeTax = document.getElementById('income_tax');
+    const netIncome = document.getElementById('net_income');
+    
+    function calculate() {
+        // 売上総利益 = 売上高 - 売上原価
+        const gp = parseInt(sales.value || 0) - parseInt(costOfSales.value || 0);
+        grossProfit.value = gp;
+        
+        // 営業利益 = 売上総利益 - 販管費
+        const oi = gp - parseInt(operatingExpenses.value || 0);
+        operatingIncome.value = oi;
+        
+        // 経常利益 = 営業利益 + 営業外収益 - 営業外費用
+        const ordi = oi + parseInt(nonOperatingIncome.value || 0) - parseInt(nonOperatingExpenses.value || 0);
+        ordinaryIncome.value = ordi;
+        
+        // 税引前当期純利益 = 経常利益 + 特別利益 - 特別損失
+        const ibt = ordi + parseInt(extraordinaryIncome.value || 0) - parseInt(extraordinaryLoss.value || 0);
+        incomeBeforeTax.value = ibt;
+        
+        // 当期純利益 = 税引前当期純利益 - 法人税等
+        const ni = ibt - parseInt(incomeTax.value || 0);
+        netIncome.value = ni;
+    }
+    
+    // 各入力フィールドに変更イベントを追加
+    [sales, costOfSales, operatingExpenses, nonOperatingIncome, nonOperatingExpenses, 
+     extraordinaryIncome, extraordinaryLoss, incomeTax].forEach(field => {
+        field.addEventListener('input', calculate);
+    });
+    
+    // 初期計算
+    calculate();
+});
+</script>
+{% endblock %}
