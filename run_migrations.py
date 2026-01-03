@@ -194,6 +194,49 @@ def run_migrations():
             conn.rollback()
             raise
         
+        # マイグレーション6: T_テナントテーブルに連絡先カラムを追加
+        print("\n[マイグレーション] T_テナントテーブルに連絡先カラムを追加...")
+        
+        contact_columns = [
+            ('郵便番号', 'TEXT'),
+            ('住所', 'TEXT'),
+            ('電話番号', 'TEXT'),
+            ('email', 'TEXT'),
+            ('openai_api_key', 'TEXT DEFAULT NULL')
+        ]
+        
+        for col_name, col_type in contact_columns:
+            try:
+                if _is_pg(conn):
+                    # PostgreSQL: カラムが存在するか確認
+                    cur.execute("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'T_テナント' AND column_name = %s
+                    """, (col_name,))
+                    if not cur.fetchone():
+                        print(f"  - {col_name}カラムが存在しません。追加します...")
+                        cur.execute(f'ALTER TABLE "T_テナント" ADD COLUMN "{col_name}" {col_type}')
+                        conn.commit()
+                        print(f"  ✅ T_テナントテーブルに{col_name}カラムを追加しました")
+                    else:
+                        print(f"  ℹ️  {col_name}カラムは既に存在します（スキップ）")
+                else:
+                    # SQLite: PRAGMAでカラムを確認
+                    cur.execute('PRAGMA table_info("T_テナント")')
+                    columns = [row[1] for row in cur.fetchall()]
+                    if col_name not in columns:
+                        print(f"  - {col_name}カラムが存在しません。追加します...")
+                        cur.execute(f'ALTER TABLE "T_テナント" ADD COLUMN "{col_name}" {col_type}')
+                        conn.commit()
+                        print(f"  ✅ T_テナントテーブルに{col_name}カラムを追加しました")
+                    else:
+                        print(f"  ℹ️  {col_name}カラムは既に存在します（スキップ）")
+            except Exception as e:
+                print(f"  ⚠️  {col_name}カラムのマイグレーションエラー: {e}")
+                conn.rollback()
+                raise
+        
         conn.close()
         
         print("\n" + "=" * 60)
