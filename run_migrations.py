@@ -202,7 +202,8 @@ def run_migrations():
             ('住所', 'TEXT'),
             ('電話番号', 'TEXT'),
             ('email', 'TEXT'),
-            ('openai_api_key', 'TEXT DEFAULT NULL')
+            ('openai_api_key', 'TEXT DEFAULT NULL'),
+            ('updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
         ]
         
         for col_name, col_type in contact_columns:
