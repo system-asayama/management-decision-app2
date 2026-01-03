@@ -4,70 +4,136 @@
 
 {% block content %}
 <div class="container mt-5">
+    <!-- ウェルカムメッセージ -->
     <div class="row">
         <div class="col-12">
             <div class="alert alert-success" role="alert">
                 <h4 class="alert-heading"><i class="fas fa-check-circle me-2"></i>経営意思決定アプリへようこそ！</h4>
-                <p>このアプリは正常に起動しています。</p>
+                <p>財務分析とシミュレーションで経営意思決定を支援します。</p>
                 <hr>
                 <p class="mb-0">テナントID: {{ tenant_id }}</p>
             </div>
         </div>
     </div>
 
+    <!-- 機能カード -->
     <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>経営意思決定支援システム</h5>
-                </div>
-                <div class="card-body">
-                    <p class="lead">財務分析とシミュレーションで経営意思決定を支援します。</p>
-                    
-                    <h6 class="mt-4 mb-3">主な機能（Phase 2で実装予定）：</h6>
-                    <ul class="list-group">
-                        <li class="list-group-item">
-                            <i class="fas fa-building text-primary me-2"></i>
-                            <strong>会社管理</strong> - 会社情報の登録・管理
-                        </li>
-                        <li class="list-group-item">
-                            <i class="fas fa-calendar-alt text-success me-2"></i>
-                            <strong>会計年度管理</strong> - 会計年度の設定・管理
-                        </li>
-                        <li class="list-group-item">
-                            <i class="fas fa-file-invoice-dollar text-info me-2"></i>
-                            <strong>損益計算書</strong> - 損益計算書の入力・管理
-                        </li>
-                        <li class="list-group-item">
-                            <i class="fas fa-balance-scale text-warning me-2"></i>
-                            <strong>貸借対照表</strong> - 貸借対照表の入力・管理
-                        </li>
-                        <li class="list-group-item">
-                            <i class="fas fa-chart-bar text-danger me-2"></i>
-                            <strong>財務諸表組換え</strong> - 財務諸表の組換え・分析
-                        </li>
-                        <li class="list-group-item">
-                            <i class="fas fa-calculator text-secondary me-2"></i>
-                            <strong>経営シミュレーション</strong> - 複数年度の財務予測
-                        </li>
-                    </ul>
-
-                    <div class="alert alert-info mt-4" role="alert">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Phase 1完了：</strong> ログインシステムとアプリ管理機能が正常に動作しています。<br>
-                        <strong>Phase 2開始：</strong> 経営意思決定アプリの各機能を順次統合していきます。
+        <!-- 企業管理 -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-building fa-3x text-primary"></i>
                     </div>
+                    <h5 class="card-title">企業管理</h5>
+                    <p class="card-text">企業情報の登録・管理を行います。</p>
+                    <a href="/decision/companies" class="btn btn-primary">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 会計年度管理 -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-alt fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title">会計年度管理</h5>
+                    <p class="card-text">会計年度の設定・管理を行います。</p>
+                    <a href="/decision/fiscal-years" class="btn btn-success">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 損益計算書 -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-file-invoice-dollar fa-3x text-info"></i>
+                    </div>
+                    <h5 class="card-title">損益計算書</h5>
+                    <p class="card-text">損益計算書の入力・管理を行います。</p>
+                    <a href="/financial/profit-loss" class="btn btn-info">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 貸借対照表 -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-balance-scale fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">貸借対照表</h5>
+                    <p class="card-text">貸借対照表の入力・管理を行います。</p>
+                    <a href="/financial/balance-sheet" class="btn btn-warning">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ダッシュボード -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-tachometer-alt fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">ダッシュボード</h5>
+                    <p class="card-text">財務指標の可視化と分析を行います。</p>
+                    <a href="/api/dashboard/summary" class="btn btn-primary">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 経営シミュレーション -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-calculator fa-3x text-secondary"></i>
+                    </div>
+                    <h5 class="card-title">経営シミュレーション</h5>
+                    <p class="card-text">複数年度の財務予測を行います。</p>
+                    <a href="/api/simulation/" class="btn btn-secondary">
+                        <i class="fas fa-arrow-right me-2"></i>開く
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 戻るボタン -->
     <div class="row mt-4">
         <div class="col-12">
-            <a href="/tenant_admin/tenant_apps" class="btn btn-secondary">
+            <a href="/tenant_admin/tenant_apps" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i>アプリ一覧に戻る
             </a>
         </div>
     </div>
 </div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+}
+</style>
 {% endblock %}

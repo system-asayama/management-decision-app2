@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '会計年度編集' if fiscal_year else '会計年度登録' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>
+                <i class="fas fa-calendar-alt me-2"></i>
+                {{ '会計年度編集' if fiscal_year else '会計年度登録' }}
+            </h2>
+            <p class="text-muted">会計年度情報を入力してください。</p>
+        </div>
+    </div>
+
+    <!-- エラーメッセージ -->
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- フォーム -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>会計年度情報
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ '/decision/fiscal-years/' + fiscal_year.id|string + '/edit' if fiscal_year else '/decision/fiscal-years/new' }}">
+                        <!-- 企業選択 -->
+                        <div class="mb-3">
+                            <label for="company_id" class="form-label">
+                                企業 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="company_id" name="company_id" required>
+                                <option value="">企業を選択してください</option>
+                                {% for company in companies %}
+                                <option value="{{ company.id }}" {{ 'selected' if fiscal_year and fiscal_year.company_id == company.id else '' }}>
+                                    {{ company.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- 年度名 -->
+                        <div class="mb-3">
+                            <label for="year_name" class="form-label">
+                                年度名 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="year_name" name="year_name" 
+                                   value="{{ fiscal_year.year_name if fiscal_year else '' }}" 
+                                   placeholder="例: 2024年度" required>
+                        </div>
+
+                        <!-- 開始日 -->
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">
+                                開始日 <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{{ fiscal_year.start_date.strftime('%Y-%m-%d') if fiscal_year and fiscal_year.start_date else '' }}" 
+                                   required>
+                        </div>
+
+                        <!-- 終了日 -->
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">
+                                終了日 <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{{ fiscal_year.end_date.strftime('%Y-%m-%d') if fiscal_year and fiscal_year.end_date else '' }}" 
+                                   required>
+                        </div>
+
+                        <!-- 月数 -->
+                        <div class="mb-3">
+                            <label for="months" class="form-label">月数</label>
+                            <input type="number" class="form-control" id="months" name="months" 
+                                   value="{{ fiscal_year.months if fiscal_year else '12' }}"
+                                   min="1" max="24" placeholder="例: 12">
+                            <div class="form-text">通常は12ヶ月です。</div>
+                        </div>
+
+                        <!-- 備考 -->
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">備考</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="その他の情報があれば入力してください">{{ fiscal_year.notes if fiscal_year else '' }}</textarea>
+                        </div>
+
+                        <!-- ボタン -->
+                        <div class="d-flex justify-content-between">
+                            <a href="/decision/fiscal-years" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>キャンセル
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>
+                                {{ '更新' if fiscal_year else '登録' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
