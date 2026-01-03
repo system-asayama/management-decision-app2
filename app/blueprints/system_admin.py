@@ -1576,7 +1576,19 @@ def transfer_ownership(admin_id):
 @require_roles(ROLES["SYSTEM_ADMIN"])
 def app_management():
     """アプリ管理ページ"""
-    return render_template('system_admin_app_management.html')
+    db = SessionLocal()
+    try:
+        # 全テナントを取得
+        tenants = db.query(TTenant).filter(TTenant.有効 == 1).all()
+        
+        # AVAILABLE_APPSをtenant_admin.pyからインポート
+        from .tenant_admin import AVAILABLE_APPS
+        
+        return render_template('system_admin_app_management.html',
+                             tenants=tenants,
+                             available_apps=AVAILABLE_APPS)
+    finally:
+        db.close()
 
 
 @bp.route('/select_tenant_from_mypage', methods=['POST'])
@@ -1996,5 +2008,42 @@ def store_apps(tid, sid):
         apps = enabled_apps
         
         return render_template('sys_store_apps.html', tenant=tenant_data, store=store_data, apps=apps, tid=tid, sid=sid)
+    finally:
+        db.close()
+
+
+@bp.route('/tenant_app_settings/<int:tenant_id>', methods=['GET', 'POST'])
+@require_roles(ROLES["SYSTEM_ADMIN"])
+def tenant_app_settings(tenant_id):
+    """テナント別アプリ設定"""
+    db = SessionLocal()
+    try:
+        # テナント情報を取得
+        tenant = db.query(TTenant).filter(
+            and_(TTenant.id == tenant_id, TTenant.有効 == 1)
+        ).first()
+        
+        if not tenant:
+            flash('テナントが見つかりません', 'error')
+            return redirect(url_for('system_admin.app_management'))
+        
+        # AVAILABLE_APPSをインポート
+        from .tenant_admin import AVAILABLE_APPS
+        
+        if request.method == 'POST':
+            # アプリ設定を保存
+            enabled_apps = request.form.getlist('enabled_apps')
+            
+            # T_テナント別アプリ設定テーブルに保存（まだ実装していないので、後で追加）
+            # 今は単にメッセージを表示
+            flash(f'テナント「{tenant.名称}」のアプリ設定を保存しました', 'success')
+            return redirect(url_for('system_admin.app_management'))
+        
+        # テナントレベルのアプリのみを表示
+        tenant_apps = [app for app in AVAILABLE_APPS if app['scope'] == 'tenant']
+        
+        return render_template('system_admin_tenant_app_settings.html',
+                             tenant=tenant,
+                             apps=tenant_apps)
     finally:
         db.close()

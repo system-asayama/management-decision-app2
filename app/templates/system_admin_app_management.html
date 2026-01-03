@@ -3,18 +3,82 @@
 {% block title %}アプリ管理 - システム管理者{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>アプリ管理</h1>
+<div class="container mt-5">
+    <h1 class="mb-4"><i class="fas fa-th me-2"></i>アプリ管理</h1>
     
-    <div class="card">
-        <h2>テナント・店舗別アプリ使用設定</h2>
-        <p>各テナントおよび店舗で使用可能なアプリケーションを管理します。</p>
-        
-        <div class="alert alert-info">
-            <strong>お知らせ:</strong> アプリ管理機能は現在開発中です。
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h4 mb-3">テナント・店舗別アプリ使用設定</h2>
+            <p class="text-muted">各テナントおよび店舗で使用可能なアプリケーションを管理します。</p>
         </div>
-        
-        <a href="{{ url_for('system_admin.mypage') }}" class="btn btn-secondary">ダッシュボードに戻る</a>
     </div>
+
+    {% if tenants %}
+        <div class="card">
+            <div class="card-body">
+                <h3 class="h5 mb-4">テナント一覧</h3>
+                <div class="list-group">
+                    {% for tenant in tenants %}
+                    <a href="{{ url_for('system_admin.tenant_app_settings', tenant_id=tenant.id) }}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">{{ tenant.名称 }}</h5>
+                                <p class="mb-1 text-muted small">テナントID: {{ tenant.id }}</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>テナントが登録されていません。
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('system_admin.mypage') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>ダッシュボードに戻る
+        </a>
+    </div>
+
+    {% if available_apps %}
+    <div class="card mt-4">
+        <div class="card-body">
+            <h3 class="h5 mb-4">利用可能なアプリ一覧</h3>
+            <div class="row">
+                {% for app in available_apps %}
+                <div class="col-md-6 mb-3">
+                    <div class="card {{ app.color }}">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-box bg-white text-dark rounded-circle p-3 me-3">
+                                    <i class="{{ app.icon }} fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h5 class="card-title mb-0 text-white">{{ app.display_name }}</h5>
+                                    <p class="card-text text-white-50 small mb-0">{{ app.description }}</p>
+                                    <span class="badge bg-light text-dark mt-2">
+                                        {% if app.scope == 'tenant' %}
+                                            テナントレベル
+                                        {% elif app.scope == 'store' %}
+                                            店舗レベル
+                                        {% else %}
+                                            全体
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
