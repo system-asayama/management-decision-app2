@@ -1894,10 +1894,18 @@ def employee_new():
 # アプリ管理
 # ========================================
 
-# 利用可能なアプリ一覧（現在は空）
-# 将来的にアプリを追加する場合は、以下の形式で追加してください：
-# {'name': 'app-name', 'display_name': 'アプリ表示名', 'scope': 'store'/'tenant'}
-AVAILABLE_APPS = []
+# 利用可能なアプリ一覧
+AVAILABLE_APPS = [
+    {
+        'name': 'decision',
+        'display_name': '経営意思決定',
+        'description': '財務分析とシミュレーションで経営意思決定を支援します。',
+        'scope': 'tenant',
+        'url': 'decision.index',
+        'icon': 'fas fa-chart-line',
+        'color': 'bg-danger'
+    }
+]
 
 
 @bp.route('/app_management', methods=['GET', 'POST'])

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}経営意思決定アプリ - テナント未選択{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12 text-center">
+            <i class="fas fa-exclamation-triangle fa-5x text-warning mb-4"></i>
+            <h1 class="mb-4">テナントが選択されていません</h1>
+            <p class="lead">経営意思決定アプリを使用するには、テナントを選択してください。</p>
+            <a href="{{ url_for('tenant_admin.dashboard') }}" class="btn btn-primary mt-3">
+                <i class="fas fa-arrow-left me-2"></i>テナント管理者ダッシュボードに戻る
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -194,6 +194,12 @@ def create_app() -> Flask:
 
     # 経営意思決定アプリのblueprints
     try:
+        from .blueprints.decision import bp as decision_bp
+        app.register_blueprint(decision_bp)
+    except Exception as e:
+        print(f"⚠️ decision blueprint 登録エラー: {e}")
+
+    try:
         from .blueprints.company_bp import bp as company_bp
         app.register_blueprint(company_bp)
     except Exception as e:
