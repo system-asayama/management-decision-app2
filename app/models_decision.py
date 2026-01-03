@@ -5,11 +5,11 @@ Node.js版（management-decision-making-app）の全テーブルをPythonに移�
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text, Boolean, Enum as SQLEnum, JSON, Numeric
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
 
-Base = declarative_base()
+# login-system-appのBaseを使用
+from app.db import Base
 
 
 # ==================== ユーザー管理 ====================
