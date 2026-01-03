@@ -9,6 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.db import Base, engine
+from sqlalchemy import text
 from app.models_decision import (
     Company, FiscalYear, ProfitLossStatement, BalanceSheet,
     RestructuredPL, RestructuredBS, LaborCost, FinancialIndicator,
@@ -49,7 +50,7 @@ def recreate_tables():
         with engine.connect() as conn:
             for table_name in tables_to_drop:
                 try:
-                    conn.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE")
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
                     conn.commit()
                     print(f"   ✓ {table_name} を削除しました")
                 except Exception as e:
@@ -66,26 +67,26 @@ def recreate_tables():
         # 作成されたテーブルの確認
         print("\n3. 作成されたテーブルを確認中...")
         with engine.connect() as conn:
-            result = conn.execute("""
+            result = conn.execute(text("""
                 SELECT table_name 
                 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name IN ('companies', 'fiscal_years')
                 ORDER BY table_name
-            """)
+            """))
             tables = [row[0] for row in result]
             
             if tables:
                 print(f"   ✓ 確認されたテーブル: {', '.join(tables)}")
                 
                 # companiesテーブルのカラムを確認
-                result = conn.execute("""
+                result = conn.execute(text("""
                     SELECT column_name, data_type 
                     FROM information_schema.columns 
                     WHERE table_name = 'companies' 
                     AND column_name IN ('tenant_id', 'capital', 'established_date', 'address', 'phone', 'email', 'website', 'notes')
                     ORDER BY column_name
-                """)
+                """))
                 columns = [(row[0], row[1]) for row in result]
                 
                 if columns:
