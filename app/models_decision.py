@@ -42,9 +42,17 @@ class Company(Base):
     __tablename__ = 'companies'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(Integer, nullable=False, index=True)  # テナントID
     name = Column(String(255), nullable=False)
     industry = Column(String(100))  # 業種
+    capital = Column(Integer)  # 資本金
     employee_count = Column(Integer)  # 従業員数
+    established_date = Column(Date)  # 設立日
+    address = Column(Text)  # 住所
+    phone = Column(String(20))  # 電話番号
+    email = Column(String(320))  # メールアドレス
+    website = Column(String(500))  # ウェブサイト
+    notes = Column(Text)  # 備考
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     
@@ -63,9 +71,11 @@ class FiscalYear(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
-    year = Column(Integer, nullable=False)
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
+    year_name = Column(String(100), nullable=False)  # 年度名（例: 2024年度）
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    months = Column(Integer, default=12)  # 月数
+    notes = Column(Text)  # 備考
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     
