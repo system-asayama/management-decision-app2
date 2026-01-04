@@ -33,65 +33,77 @@
     </div>
     {% endif %}
 
-    <!-- 会計年度一覧 -->
+    <!-- 会計年度一覧（カード形式） -->
+    {% if fiscal_years %}
+    <div class="row">
+        {% for fy in fiscal_years %}
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-9">
+                            <h4 class="card-title mb-3">
+                                <i class="fas fa-calendar-alt me-2 text-success"></i>{{ fy.year_name }}
+                            </h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>会計年度ID:</strong> {{ fy.id }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>企業名:</strong> {{ fy.company.name if fy.company else '-' }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>開始日:</strong> {{ fy.start_date.strftime('%Y年%m月%d日') if fy.start_date else '-' }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>終了日:</strong> {{ fy.end_date.strftime('%Y年%m月%d日') if fy.end_date else '-' }}
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>月数:</strong> {{ fy.months or '-' }} ヶ月
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong>作成日:</strong> {{ fy.created_at.strftime('%Y年%m月%d日') if fy.created_at else '-' }}
+                                    </p>
+                                </div>
+                            </div>
+                            {% if fy.description %}
+                            <p class="mb-2 mt-2">
+                                <strong>説明:</strong> {{ fy.description }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3 d-flex flex-column justify-content-center align-items-end">
+                            <a href="/decision/fiscal-years/{{ fy.id }}/edit" class="btn btn-warning btn-sm mb-2 w-100">
+                                <i class="fas fa-edit me-2"></i>編集
+                            </a>
+                            <button class="btn btn-danger btn-sm w-100" onclick="deleteFiscalYear({{ fy.id }}, '{{ fy.year_name }}')">
+                                <i class="fas fa-trash me-2"></i>削除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>会計年度一覧</h5>
-                </div>
-                <div class="card-body">
-                    {% if fiscal_years %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>企業名</th>
-                                    <th>年度名</th>
-                                    <th>開始日</th>
-                                    <th>終了日</th>
-                                    <th>月数</th>
-                                    <th>作成日</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for fy in fiscal_years %}
-                                <tr>
-                                    <td>{{ fy.id }}</td>
-                                    <td>{{ fy.company.name if fy.company else '-' }}</td>
-                                    <td><strong>{{ fy.year_name }}</strong></td>
-                                    <td>{{ fy.start_date.strftime('%Y-%m-%d') if fy.start_date else '-' }}</td>
-                                    <td>{{ fy.end_date.strftime('%Y-%m-%d') if fy.end_date else '-' }}</td>
-                                    <td>{{ fy.months or '-' }} ヶ月</td>
-                                    <td>{{ fy.created_at.strftime('%Y-%m-%d') if fy.created_at else '-' }}</td>
-                                    <td>
-                                        <a href="/decision/fiscal-years/{{ fy.id }}/edit" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteFiscalYear({{ fy.id }}, '{{ fy.year_name }}')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">登録されている会計年度がありません。</p>
-                        <a href="/decision/fiscal-years/new" class="btn btn-success">
-                            <i class="fas fa-plus me-2"></i>最初の会計年度を登録
-                        </a>
-                    </div>
-                    {% endif %}
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">登録されている会計年度がありません。</p>
+                    <a href="/decision/fiscal-years/new" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>最初の会計年度を登録
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- 戻るボタン -->
     <div class="row mt-4">
