@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}経営シミュレーション{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">経営シミュレーション</h1>
+        
+        <p class="text-gray-600 mb-6">過去の実績データをベースに、将来の財務状況をシミュレーションします。</p>
+        
+        <!-- シミュレーション設定 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">シミュレーション設定</h2>
+            
+            <form id="simulation_form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 企業選択 -->
+                    <div>
+                        <label for="company_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            企業 <span class="text-red-500">*</span>
+                        </label>
+                        <select id="company_id" name="company_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                            <option value="">選択してください</option>
+                            {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- ベース年度選択 -->
+                    <div>
+                        <label for="base_fiscal_year_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            ベース年度 <span class="text-red-500">*</span>
+                        </label>
+                        <select id="base_fiscal_year_id" name="base_fiscal_year_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled required>
+                            <option value="">まず企業を選択してください</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 予測年数 -->
+                    <div>
+                        <label for="forecast_years" class="block text-sm font-medium text-gray-700 mb-2">
+                            予測年数 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="forecast_years" name="forecast_years" min="1" max="10" value="5" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        <p class="text-sm text-gray-500 mt-1">1〜10年の範囲で設定してください</p>
+                    </div>
+                    
+                    <!-- 売上高成長率 -->
+                    <div>
+                        <label for="sales_growth_rate" class="block text-sm font-medium text-gray-700 mb-2">
+                            売上高成長率（%） <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" id="sales_growth_rate" name="sales_growth_rate" step="0.1" value="5.0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        <p class="text-sm text-gray-500 mt-1">例: 5.0 = 年5%成長</p>
+                    </div>
+                </div>
+                
+                <!-- 詳細設定（オプション） -->
+                <div class="mt-6">
+                    <button type="button" id="toggle_advanced" class="text-blue-600 hover:text-blue-800 font-medium">
+                        ▼ 詳細設定（オプション）
+                    </button>
+                    
+                    <div id="advanced_settings" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="operating_margin" class="block text-sm font-medium text-gray-700 mb-2">
+                                    営業利益率（%）
+                                </label>
+                                <input type="number" id="operating_margin" name="operating_margin" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <p class="text-sm text-gray-500 mt-1">未入力の場合はベース年度の比率を維持</p>
+                            </div>
+                            
+                            <div>
+                                <label for="ordinary_margin" class="block text-sm font-medium text-gray-700 mb-2">
+                                    経常利益率（%）
+                                </label>
+                                <input type="number" id="ordinary_margin" name="ordinary_margin" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <p class="text-sm text-gray-500 mt-1">未入力の場合はベース年度の比率を維持</p>
+                            </div>
+                            
+                            <div>
+                                <label for="net_margin" class="block text-sm font-medium text-gray-700 mb-2">
+                                    当期純利益率（%）
+                                </label>
+                                <input type="number" id="net_margin" name="net_margin" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <p class="text-sm text-gray-500 mt-1">未入力の場合はベース年度の比率を維持</p>
+                            </div>
+                            
+                            <div>
+                                <label for="asset_turnover" class="block text-sm font-medium text-gray-700 mb-2">
+                                    総資産回転率
+                                </label>
+                                <input type="number" id="asset_turnover" name="asset_turnover" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <p class="text-sm text-gray-500 mt-1">未入力の場合はベース年度の比率を維持</p>
+                            </div>
+                            
+                            <div>
+                                <label for="debt_ratio" class="block text-sm font-medium text-gray-700 mb-2">
+                                    負債比率（%）
+                                </label>
+                                <input type="number" id="debt_ratio" name="debt_ratio" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <p class="text-sm text-gray-500 mt-1">未入力の場合はベース年度の比率を維持</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 実行ボタン -->
+                <div class="mt-6 flex gap-4">
+                    <button type="submit" id="simulate_btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>
+                        シミュレーション実行
+                    </button>
+                    <button type="button" id="scenario_btn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>
+                        シナリオ分析（3パターン）
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- シミュレーション結果表示エリア -->
+        <div id="simulation_result" class="hidden">
+            <!-- 基本情報 -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 class="text-lg font-semibold text-blue-800 mb-2" id="result_title"></h3>
+                <p class="text-sm text-blue-600" id="result_subtitle"></p>
+            </div>
+            
+            <!-- 予測データテーブル -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">予測データ</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">年度</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">売上高</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">営業利益</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">経常利益</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">当期純利益</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">総資産</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">純資産</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecast_table_body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- グラフ表示 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">売上高・利益推移</h3>
+                    <canvas id="sales_profit_chart"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">総資産・純資産推移</h3>
+                    <canvas id="assets_chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">財務指標推移</h3>
+                <canvas id="ratios_chart"></canvas>
+            </div>
+        </div>
+        
+        <!-- シナリオ分析結果表示エリア -->
+        <div id="scenario_result" class="hidden">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 class="text-lg font-semibold text-green-800 mb-2">シナリオ分析結果</h3>
+                <p class="text-sm text-green-600">楽観・標準・悲観の3つのシナリオで予測しました</p>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">シナリオ比較グラフ</h3>
+                <canvas id="scenario_chart"></canvas>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <a href="{{ url_for('decision.index') }}" class="text-blue-600 hover:text-blue-800">← メニューに戻る</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let salesProfitChart, assetsChart, ratiosChart, scenarioChart;
+
+// 詳細設定の表示切り替え
+document.getElementById('toggle_advanced').addEventListener('click', function() {
+    const advancedSettings = document.getElementById('advanced_settings');
+    if (advancedSettings.classList.contains('hidden')) {
+        advancedSettings.classList.remove('hidden');
+        this.textContent = '▲ 詳細設定（オプション）';
+    } else {
+        advancedSettings.classList.add('hidden');
+        this.textContent = '▼ 詳細設定（オプション）';
+    }
+});
+
+// 企業選択時に会計年度を取得
+document.getElementById('company_id').addEventListener('change', async function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('base_fiscal_year_id');
+    const simulateBtn = document.getElementById('simulate_btn');
+    const scenarioBtn = document.getElementById('scenario_btn');
+    
+    if (!companyId) {
+        fiscalYearSelect.disabled = true;
+        fiscalYearSelect.innerHTML = '<option value="">まず企業を選択してください</option>';
+        simulateBtn.disabled = true;
+        scenarioBtn.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/fiscal-years/by-company/${companyId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            fiscalYearSelect.disabled = false;
+            fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
+            data.fiscal_years.forEach(fy => {
+                const option = document.createElement('option');
+                option.value = fy.id;
+                option.textContent = fy.year_name;
+                fiscalYearSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('会計年度の取得に失敗しました:', error);
+        alert('会計年度の取得に失敗しました');
+    }
+});
+
+// 会計年度選択時にボタンを有効化
+document.getElementById('base_fiscal_year_id').addEventListener('change', function() {
+    const simulateBtn = document.getElementById('simulate_btn');
+    const scenarioBtn = document.getElementById('scenario_btn');
+    if (this.value) {
+        simulateBtn.disabled = false;
+        scenarioBtn.disabled = false;
+    } else {
+        simulateBtn.disabled = true;
+        scenarioBtn.disabled = true;
+    }
+});
+
+// シミュレーション実行
+document.getElementById('simulation_form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const params = new URLSearchParams();
+    
+    for (const [key, value] of formData.entries()) {
+        if (value) {
+            params.append(key, value);
+        }
+    }
+    
+    try {
+        const response = await fetch('/decision/simulation/execute?' + params.toString());
+        const data = await response.json();
+        
+        if (data.success) {
+            displaySimulationResult(data);
+        } else {
+            alert('シミュレーションに失敗しました: ' + data.error);
+        }
+    } catch (error) {
+        console.error('シミュレーションに失敗しました:', error);
+        alert('シミュレーションに失敗しました');
+    }
+});
+
+// シナリオ分析実行
+document.getElementById('scenario_btn').addEventListener('click', async function() {
+    const companyId = document.getElementById('company_id').value;
+    const baseFiscalYearId = document.getElementById('base_fiscal_year_id').value;
+    const forecastYears = document.getElementById('forecast_years').value;
+    const salesGrowthRate = document.getElementById('sales_growth_rate').value;
+    
+    if (!companyId || !baseFiscalYearId) {
+        alert('企業とベース年度を選択してください');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/simulation/scenario?company_id=${companyId}&base_fiscal_year_id=${baseFiscalYearId}&forecast_years=${forecastYears}&sales_growth_rate=${salesGrowthRate}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayScenarioResult(data);
+        } else {
+            alert('シナリオ分析に失敗しました: ' + data.error);
+        }
+    } catch (error) {
+        console.error('シナリオ分析に失敗しました:', error);
+        alert('シナリオ分析に失敗しました');
+    }
+});
+
+function displaySimulationResult(data) {
+    // 結果エリアを表示
+    document.getElementById('simulation_result').classList.remove('hidden');
+    document.getElementById('scenario_result').classList.add('hidden');
+    
+    // タイトルを設定
+    document.getElementById('result_title').textContent = `${data.company_name} - ${data.base_year_name}をベースとした予測`;
+    document.getElementById('result_subtitle').textContent = `予測期間: ${data.forecast_years}年 | 売上高成長率: ${data.sales_growth_rate}%`;
+    
+    // テーブルを更新
+    const tbody = document.getElementById('forecast_table_body');
+    tbody.innerHTML = '';
+    
+    data.forecast_data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">+${row.year_offset}年後</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.sales)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.operating_income)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.ordinary_income)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.net_income)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.total_assets)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">${formatNumber(row.total_equity)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    // グラフを描画
+    drawSalesProfitChart(data.forecast_data);
+    drawAssetsChart(data.forecast_data);
+    drawRatiosChart(data.forecast_data);
+    
+    // 結果エリアまでスクロール
+    document.getElementById('simulation_result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayScenarioResult(data) {
+    // 結果エリアを表示
+    document.getElementById('scenario_result').classList.remove('hidden');
+    document.getElementById('simulation_result').classList.add('hidden');
+    
+    // シナリオ比較グラフを描画
+    drawScenarioChart(data.scenarios);
+    
+    // 結果エリアまでスクロール
+    document.getElementById('scenario_result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function drawSalesProfitChart(data) {
+    const ctx = document.getElementById('sales_profit_chart').getContext('2d');
+    
+    if (salesProfitChart) {
+        salesProfitChart.destroy();
+    }
+    
+    salesProfitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => `+${d.year_offset}年`),
+            datasets: [
+                {
+                    label: '売上高',
+                    data: data.map(d => d.sales),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '営業利益',
+                    data: data.map(d => d.operating_income),
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '当期純利益',
+                    data: data.map(d => d.net_income),
+                    borderColor: 'rgb(245, 158, 11)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function drawAssetsChart(data) {
+    const ctx = document.getElementById('assets_chart').getContext('2d');
+    
+    if (assetsChart) {
+        assetsChart.destroy();
+    }
+    
+    assetsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => `+${d.year_offset}年`),
+            datasets: [
+                {
+                    label: '総資産',
+                    data: data.map(d => d.total_assets),
+                    borderColor: 'rgb(139, 92, 246)',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '純資産',
+                    data: data.map(d => d.total_equity),
+                    borderColor: 'rgb(236, 72, 153)',
+                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function drawRatiosChart(data) {
+    const ctx = document.getElementById('ratios_chart').getContext('2d');
+    
+    if (ratiosChart) {
+        ratiosChart.destroy();
+    }
+    
+    ratiosChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => `+${d.year_offset}年`),
+            datasets: [
+                {
+                    label: 'ROA (%)',
+                    data: data.map(d => d.roa),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: 'ROE (%)',
+                    data: data.map(d => d.roe),
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '自己資本比率 (%)',
+                    data: data.map(d => d.equity_ratio),
+                    borderColor: 'rgb(245, 158, 11)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function drawScenarioChart(scenarios) {
+    const ctx = document.getElementById('scenario_chart').getContext('2d');
+    
+    if (scenarioChart) {
+        scenarioChart.destroy();
+    }
+    
+    const optimisticData = scenarios.optimistic;
+    const standardData = scenarios.standard;
+    const pessimisticData = scenarios.pessimistic;
+    
+    scenarioChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: optimisticData.map(d => `+${d.year_offset}年`),
+            datasets: [
+                {
+                    label: '楽観シナリオ（売上高）',
+                    data: optimisticData.map(d => d.sales),
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '標準シナリオ（売上高）',
+                    data: standardData.map(d => d.sales),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: '悲観シナリオ（売上高）',
+                    data: pessimisticData.map(d => d.sales),
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('ja-JP').format(Math.round(num));
+}
+</script>
+{% endblock %}

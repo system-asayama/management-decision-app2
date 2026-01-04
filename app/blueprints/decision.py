@@ -777,3 +777,204 @@ def dashboard_multi_year_data(company_id):
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+# ============================================================
+# 経営シミュレーションルート
+# ============================================================
+
+@bp.route('/simulation')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def simulation():
+    """経営シミュレーションページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('simulation.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/simulation/execute')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def simulation_execute():
+    """シミュレーション実行API"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    # パラメータを取得
+    company_id = request.args.get('company_id', type=int)
+    base_fiscal_year_id = request.args.get('base_fiscal_year_id', type=int)
+    forecast_years = request.args.get('forecast_years', type=int)
+    sales_growth_rate = request.args.get('sales_growth_rate', type=float)
+    
+    # オプションパラメータ
+    operating_margin = request.args.get('operating_margin', type=float)
+    ordinary_margin = request.args.get('ordinary_margin', type=float)
+    net_margin = request.args.get('net_margin', type=float)
+    asset_turnover = request.args.get('asset_turnover', type=float)
+    debt_ratio = request.args.get('debt_ratio', type=float)
+    
+    if not all([company_id, base_fiscal_year_id, forecast_years, sales_growth_rate is not None]):
+        return jsonify({'success': False, 'error': '必須パラメータが不足しています'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        from app.utils.simulation_calculator import SimulationCalculator
+        
+        # 企業を確認
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
+        
+        # ベース年度を確認
+        base_fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == base_fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not base_fiscal_year:
+            return jsonify({'success': False, 'error': 'ベース年度が見つかりません'}), 404
+        
+        # ベース年度の財務データを取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == base_fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == base_fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'success': False, 'error': 'ベース年度の財務データが見つかりません'}), 404
+        
+        # シミュレーションを実行
+        forecast_data = SimulationCalculator.forecast_financials(
+            base_sales=profit_loss.sales,
+            base_operating_income=profit_loss.operating_income,
+            base_ordinary_income=profit_loss.ordinary_income,
+            base_net_income=profit_loss.net_income,
+            base_total_assets=balance_sheet.total_assets,
+            base_total_liabilities=balance_sheet.total_liabilities,
+            base_total_equity=balance_sheet.total_equity,
+            forecast_years=forecast_years,
+            sales_growth_rate=sales_growth_rate,
+            operating_margin=operating_margin,
+            ordinary_margin=ordinary_margin,
+            net_margin=net_margin,
+            asset_turnover=asset_turnover,
+            debt_ratio=debt_ratio
+        )
+        
+        # 財務指標を計算
+        forecast_data_with_ratios = SimulationCalculator.calculate_financial_ratios(forecast_data)
+        
+        return jsonify({
+            'success': True,
+            'company_name': company.name,
+            'base_year_name': base_fiscal_year.year_name,
+            'forecast_years': forecast_years,
+            'sales_growth_rate': sales_growth_rate,
+            'forecast_data': forecast_data_with_ratios
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/simulation/scenario')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"], ROLES["ADMIN"], ROLES["EMPLOYEE"])
+def simulation_scenario():
+    """シナリオ分析API"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+    
+    # パラメータを取得
+    company_id = request.args.get('company_id', type=int)
+    base_fiscal_year_id = request.args.get('base_fiscal_year_id', type=int)
+    forecast_years = request.args.get('forecast_years', type=int)
+    sales_growth_rate = request.args.get('sales_growth_rate', type=float)
+    
+    if not all([company_id, base_fiscal_year_id, forecast_years, sales_growth_rate is not None]):
+        return jsonify({'success': False, 'error': '必須パラメータが不足しています'}), 400
+    
+    db = SessionLocal()
+    try:
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        from app.utils.simulation_calculator import SimulationCalculator
+        
+        # 企業を確認
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
+        
+        # ベース年度を確認
+        base_fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == base_fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not base_fiscal_year:
+            return jsonify({'success': False, 'error': 'ベース年度が見つかりません'}), 404
+        
+        # ベース年度の財務データを取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == base_fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == base_fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'success': False, 'error': 'ベース年度の財務データが見つかりません'}), 404
+        
+        # シナリオ分析を実行
+        scenarios = SimulationCalculator.create_scenario_forecasts(
+            base_sales=profit_loss.sales,
+            base_operating_income=profit_loss.operating_income,
+            base_ordinary_income=profit_loss.ordinary_income,
+            base_net_income=profit_loss.net_income,
+            base_total_assets=balance_sheet.total_assets,
+            base_total_liabilities=balance_sheet.total_liabilities,
+            base_total_equity=balance_sheet.total_equity,
+            forecast_years=forecast_years,
+            base_growth_rate=sales_growth_rate
+        )
+        
+        # 各シナリオの財務指標を計算
+        scenarios_with_ratios = {
+            'optimistic': SimulationCalculator.calculate_financial_ratios(scenarios['optimistic']),
+            'standard': SimulationCalculator.calculate_financial_ratios(scenarios['standard']),
+            'pessimistic': SimulationCalculator.calculate_financial_ratios(scenarios['pessimistic'])
+        }
+        
+        return jsonify({
+            'success': True,
+            'company_name': company.name,
+            'base_year_name': base_fiscal_year.year_name,
+            'forecast_years': forecast_years,
+            'base_growth_rate': sales_growth_rate,
+            'scenarios': scenarios_with_ratios
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        db.close()
