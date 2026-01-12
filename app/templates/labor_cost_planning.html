@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}労務費管理計画{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-users me-2"></i>労務費管理計画</h2>
+    <p class="text-muted">人件費の計画と効率性を分析します。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">労務費計画条件</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="current_employee_count" class="form-label">現在の従業員数</label>
+                        <input type="number" class="form-control" id="current_employee_count" value="10" min="0" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="planned_employee_count" class="form-label">計画従業員数</label>
+                        <input type="number" class="form-control" id="planned_employee_count" value="12" min="0" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="average_salary" class="form-label">平均月額給与（円）</label>
+                        <input type="number" class="form-control" id="average_salary" value="300000" min="0" step="10000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="bonus_months" class="form-label">賞与月数</label>
+                        <input type="number" class="form-control" id="bonus_months" value="2.0" min="0" step="0.1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="social_insurance_rate" class="form-label">社会保険料率（%）</label>
+                        <input type="number" class="form-control" id="social_insurance_rate" value="15" min="0" step="0.1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="welfare_rate" class="form-label">福利厚生費率（%）</label>
+                        <input type="number" class="form-control" id="welfare_rate" value="5" min="0" step="0.1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="other_rate" class="form-label">その他人件費率（%）</label>
+                        <input type="number" class="form-control" id="other_rate" value="2" min="0" step="0.1">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="calculateLaborCost()">
+                <i class="fas fa-calculator me-2"></i>計算実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 計算結果 -->
+    <div id="labor_cost_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">労務費計画結果</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">従業員数変化</h6>
+                                <h4 id="employee_change">-</h4>
+                                <p class="mb-0 text-muted" id="employee_change_rate">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>総労務費</h6>
+                                <h4 id="total_labor_cost">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>一人当たり労務費</h6>
+                                <h4 id="labor_cost_per_employee">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>平均月額給与</h6>
+                                <h4 id="display_average_salary">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>労務費内訳</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>項目</th>
+                                    <th>金額</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labor_cost_breakdown">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="labor_cost_chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 効率性分析 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">労務費効率性分析</h5>
+            <p class="text-muted">売上高と営業利益を入力して効率性を分析します。</p>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="analysis_sales" class="form-label">売上高（円）</label>
+                        <input type="number" class="form-control" id="analysis_sales" value="100000000" min="0" step="1000000">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="analysis_operating_income" class="form-label">営業利益（円）</label>
+                        <input type="number" class="form-control" id="analysis_operating_income" value="10000000" min="0" step="1000000">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="analysis_employee_count" class="form-label">従業員数</label>
+                        <input type="number" class="form-control" id="analysis_employee_count" value="12" min="1" step="1">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="analyzeEfficiency()">
+                <i class="fas fa-chart-bar me-2"></i>効率性分析
+            </button>
+        </div>
+    </div>
+    
+    <!-- 効率性分析結果 -->
+    <div id="efficiency_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">効率性分析結果</h5>
+                
+                <div class="alert alert-info" id="efficiency_evaluation">
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">労務費率</h6>
+                                <h4 id="labor_cost_ratio">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">労働生産性</h6>
+                                <h4 id="labor_productivity">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">一人当たり営業利益</h6>
+                                <h4 id="operating_income_per_employee">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">労働分配率</h6>
+                                <h4 id="labor_share_ratio">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let laborCostChart = null;
+
+async function calculateLaborCost() {
+    const data = {
+        current_employee_count: parseInt(document.getElementById('current_employee_count').value),
+        planned_employee_count: parseInt(document.getElementById('planned_employee_count').value),
+        average_salary: parseFloat(document.getElementById('average_salary').value),
+        bonus_months: parseFloat(document.getElementById('bonus_months').value),
+        social_insurance_rate: parseFloat(document.getElementById('social_insurance_rate').value) / 100,
+        welfare_rate: parseFloat(document.getElementById('welfare_rate').value) / 100,
+        other_rate: parseFloat(document.getElementById('other_rate').value) / 100
+    };
+    
+    try {
+        const response = await fetch('/decision/labor-cost-planning/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayLaborCostResults(result);
+    } catch (error) {
+        console.error('計算に失敗しました:', error);
+        alert('計算に失敗しました');
+    }
+}
+
+async function analyzeEfficiency() {
+    const totalLaborCost = parseFloat(document.getElementById('total_labor_cost').textContent.replace(/[^0-9.-]/g, ''));
+    
+    if (!totalLaborCost) {
+        alert('先に労務費計画を計算してください');
+        return;
+    }
+    
+    const data = {
+        total_labor_cost: totalLaborCost,
+        sales: parseFloat(document.getElementById('analysis_sales').value),
+        operating_income: parseFloat(document.getElementById('analysis_operating_income').value),
+        employee_count: parseInt(document.getElementById('analysis_employee_count').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/labor-cost-planning/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayEfficiencyResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+function displayLaborCostResults(data) {
+    // サマリーを表示
+    document.getElementById('employee_change').textContent = 
+        (data.employee_change >= 0 ? '+' : '') + data.employee_change + '人';
+    document.getElementById('employee_change_rate').textContent = 
+        (data.employee_change_rate >= 0 ? '+' : '') + data.employee_change_rate.toFixed(1) + '%';
+    document.getElementById('total_labor_cost').textContent = formatNumber(data.total_labor_cost) + '円';
+    document.getElementById('labor_cost_per_employee').textContent = formatNumber(data.labor_cost_per_employee) + '円';
+    document.getElementById('display_average_salary').textContent = formatNumber(data.average_salary) + '円';
+    
+    // 内訳テーブルを表示
+    const breakdownBody = document.getElementById('labor_cost_breakdown');
+    breakdownBody.innerHTML = `
+        <tr>
+            <td>年間基本給</td>
+            <td>${formatNumber(data.annual_base_salary)}円</td>
+        </tr>
+        <tr>
+            <td>年間賞与</td>
+            <td>${formatNumber(data.annual_bonus)}円</td>
+        </tr>
+        <tr>
+            <td>社会保険料</td>
+            <td>${formatNumber(data.social_insurance)}円</td>
+        </tr>
+        <tr>
+            <td>福利厚生費</td>
+            <td>${formatNumber(data.welfare_expense)}円</td>
+        </tr>
+        <tr>
+            <td>その他人件費</td>
+            <td>${formatNumber(data.other_expense)}円</td>
+        </tr>
+        <tr class="table-primary">
+            <td><strong>総労務費</strong></td>
+            <td><strong>${formatNumber(data.total_labor_cost)}円</strong></td>
+        </tr>
+    `;
+    
+    // グラフを表示
+    displayLaborCostChart(data);
+    
+    // 結果エリアを表示
+    document.getElementById('labor_cost_results').style.display = 'block';
+    
+    // 効率性分析の従業員数を更新
+    document.getElementById('analysis_employee_count').value = data.planned_employee_count;
+}
+
+function displayLaborCostChart(data) {
+    const ctx = document.getElementById('labor_cost_chart').getContext('2d');
+    
+    if (laborCostChart) {
+        laborCostChart.destroy();
+    }
+    
+    laborCostChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['基本給', '賞与', '社会保険料', '福利厚生費', 'その他'],
+            datasets: [{
+                data: [
+                    data.annual_base_salary,
+                    data.annual_bonus,
+                    data.social_insurance,
+                    data.welfare_expense,
+                    data.other_expense
+                ],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: '労務費内訳'
+                }
+            }
+        }
+    });
+}
+
+function displayEfficiencyResults(data) {
+    document.getElementById('efficiency_evaluation').textContent = data.evaluation;
+    document.getElementById('labor_cost_ratio').textContent = data.labor_cost_ratio.toFixed(1) + '%';
+    document.getElementById('labor_productivity').textContent = formatNumber(data.labor_productivity) + '円';
+    document.getElementById('operating_income_per_employee').textContent = formatNumber(data.operating_income_per_employee) + '円';
+    document.getElementById('labor_share_ratio').textContent = data.labor_share_ratio.toFixed(1) + '%';
+    
+    document.getElementById('efficiency_results').style.display = 'block';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}

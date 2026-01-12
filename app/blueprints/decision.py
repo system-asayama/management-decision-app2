@@ -2100,3 +2100,75 @@ def differential_analysis_continue_or_discontinue():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# 労務費管理計画
+# ============================================================
+
+@bp.route('/labor-cost-planning')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def labor_cost_planning():
+    """労務費管理計画ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    return render_template('labor_cost_planning.html')
+
+
+@bp.route('/labor-cost-planning/calculate', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def labor_cost_planning_calculate():
+    """労務費計画を計算"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.labor_cost_planner import plan_labor_cost
+        
+        result = plan_labor_cost(
+            current_employee_count=int(data.get('current_employee_count', 0)),
+            planned_employee_count=int(data.get('planned_employee_count', 0)),
+            average_salary=float(data.get('average_salary', 0)),
+            bonus_months=float(data.get('bonus_months', 2.0)),
+            social_insurance_rate=float(data.get('social_insurance_rate', 0.15)),
+            welfare_rate=float(data.get('welfare_rate', 0.05)),
+            other_rate=float(data.get('other_rate', 0.02))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/labor-cost-planning/analyze', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def labor_cost_planning_analyze():
+    """労務費効率性を分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.labor_cost_planner import analyze_labor_cost_efficiency
+        
+        result = analyze_labor_cost_efficiency(
+            total_labor_cost=float(data.get('total_labor_cost', 0)),
+            sales=float(data.get('sales', 0)),
+            operating_income=float(data.get('operating_income', 0)),
+            employee_count=int(data.get('employee_count', 1))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
