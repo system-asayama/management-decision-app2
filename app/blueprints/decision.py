@@ -978,3 +978,159 @@ def simulation_scenario():
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 詳細財務分析ルート
+# ============================================================
+
+@bp.route('/financial-analysis-detailed')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financial_analysis_detailed():
+    """詳細財務分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        # テナントの企業一覧を取得
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('financial_analysis_detailed.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/financial-analysis-detailed/analyze')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financial_analysis_detailed_analyze():
+    """詳細財務分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    
+    if not company_id or not fiscal_year_id:
+        return jsonify({'error': '企業IDと会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.advanced_financial_analysis import calculate_all_indicators
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 当期の財務データを取得
+        current_pl = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        current_bs = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not current_pl or not current_bs:
+            return jsonify({'error': '財務データが見つかりません'}), 404
+        
+        # 前期の財務データを取得（成長力指標用）
+        # 前期の会計年度を取得
+        previous_fiscal_years = db.query(FiscalYear).filter(
+            FiscalYear.company_id == company_id,
+            FiscalYear.start_date < fiscal_year.start_date
+        ).order_by(FiscalYear.start_date.desc()).all()
+        
+        previous_pl = None
+        previous_bs = None
+        if previous_fiscal_years:
+            previous_fiscal_year = previous_fiscal_years[0]
+            previous_pl = db.query(ProfitLossStatement).filter(
+                ProfitLossStatement.fiscal_year_id == previous_fiscal_year.id
+            ).first()
+            previous_bs = db.query(BalanceSheet).filter(
+                BalanceSheet.fiscal_year_id == previous_fiscal_year.id
+            ).first()
+        
+        # 当期PLデータを辞書に変換
+        current_pl_data = {
+            'sales': current_pl.sales,
+            'cost_of_sales': current_pl.cost_of_sales,
+            'gross_profit': current_pl.gross_profit,
+            'operating_income': current_pl.operating_income,
+            'ordinary_income': current_pl.ordinary_income,
+            'net_income': current_pl.net_income,
+            'employees': company.employee_count or 1,  # ゼロ除算を避けるため
+            'labor_cost': current_pl.operating_expenses * 0.4,  # 仮の労務費（販管費の40%と仮定）
+            'interest_expense': current_pl.non_operating_expenses  # 仮の支払利息
+        }
+        
+        # 当期BSデータを辞書に変換
+        current_bs_data = {
+            'current_assets': current_bs.current_assets,
+            'fixed_assets': current_bs.fixed_assets,
+            'total_assets': current_bs.total_assets,
+            'current_liabilities': current_bs.current_liabilities,
+            'fixed_liabilities': current_bs.fixed_liabilities,
+            'total_liabilities': current_bs.total_liabilities,
+            'net_assets': current_bs.total_equity,
+            'long_term_liabilities': current_bs.fixed_liabilities,
+            'quick_assets': current_bs.current_assets * 0.7,  # 仮の当座資産（流動資産の70%と仮定）
+            'accounts_receivable': current_bs.current_assets * 0.4,  # 仮の売上債権（流動資産の40%と仮定）
+            'inventory': current_bs.current_assets * 0.3,  # 仮の棚卸資産（流動資産の30%と仮定）
+            'accounts_payable': current_bs.current_liabilities * 0.5  # 仮の買入債務（流動負債の50%と仮定）
+        }
+        
+        # 前期データを辞書に変換（存在する場合）
+        previous_pl_data = None
+        previous_bs_data = None
+        if previous_pl and previous_bs:
+            previous_pl_data = {
+                'sales': previous_pl.sales,
+                'employees': company.employee_count or 1
+            }
+            previous_bs_data = {
+                'total_assets': previous_bs.total_assets,
+                'net_assets': previous_bs.total_equity
+            }
+        
+        # すべての財務指標を計算
+        indicators = calculate_all_indicators(
+            current_pl=current_pl_data,
+            current_bs=current_bs_data,
+            previous_pl=previous_pl_data,
+            previous_bs=previous_bs_data
+        )
+        
+        # 結果を返す
+        return jsonify({
+            'company_name': company.name,
+            'fiscal_year_name': fiscal_year.year_name,
+            'start_date': fiscal_year.start_date.strftime('%Y年%m月%d日'),
+            'end_date': fiscal_year.end_date.strftime('%Y年%m月%d日'),
+            'growth': indicators['growth'],
+            'profitability': indicators['profitability'],
+            'financial_strength': indicators['financial_strength'],
+            'productivity': indicators['productivity']
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

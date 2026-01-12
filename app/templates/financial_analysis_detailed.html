@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+
+{% block title %}詳細財務分析{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-chart-line me-2"></i>詳細財務分析</h2>
+            <p class="text-muted">企業の成長力・収益力・資金力・生産力を詳細に分析します。</p>
+        </div>
+    </div>
+
+    <!-- 企業・年度選択フォーム -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="analysisForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" required>
+                        <option value="">選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" required>
+                        <option value="">企業を選択してください</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-chart-bar me-2"></i>分析実行
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 分析結果表示エリア -->
+    <div id="analysisResults" style="display: none;">
+        <!-- 基本情報 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>基本情報</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>企業名:</strong> <span id="companyName"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>会計年度:</strong> <span id="fiscalYearName"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>期間:</strong> <span id="fiscalPeriod"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>分析日:</strong> <span id="analysisDate"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成長力指標 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-seedling me-2"></i>成長力指標</h5>
+            </div>
+            <div class="card-body">
+                <div id="growthIndicators" class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高成長率</h6>
+                                <h3 class="card-title text-success" id="salesGrowthRate">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">総資産成長率</h6>
+                                <h3 class="card-title text-success" id="totalAssetsGrowthRate">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">純資産成長率</h6>
+                                <h3 class="card-title text-success" id="netAssetsGrowthRate">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">従業員数成長率</h6>
+                                <h3 class="card-title text-success" id="employeesGrowthRate">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="growthMessage" class="alert alert-info" style="display: none;">
+                    <i class="fas fa-info-circle me-2"></i>成長力指標を表示するには、前年度のデータが必要です。
+                </div>
+                <canvas id="growthChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 収益力指標 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-coins me-2"></i>収益力指標</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高総利益率</h6>
+                                <h3 class="card-title text-info" id="grossProfitMargin">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高営業利益率</h6>
+                                <h3 class="card-title text-info" id="operatingProfitMargin">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高経常利益率</h6>
+                                <h3 class="card-title text-info" id="ordinaryProfitMargin">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高当期純利益率</h6>
+                                <h3 class="card-title text-info" id="netProfitMargin">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">ROA（総資産利益率）</h6>
+                                <h3 class="card-title text-info" id="roa">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">ROE（自己資本利益率）</h6>
+                                <h3 class="card-title text-info" id="roe">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">労働生産性</h6>
+                                <h3 class="card-title text-info" id="laborProductivity">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">労働分配率</h6>
+                                <h3 class="card-title text-info" id="laborShareRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="profitabilityChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 資金力指標 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>資金力指標</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">流動比率</h6>
+                                <h3 class="card-title text-warning" id="currentRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">当座比率</h6>
+                                <h3 class="card-title text-warning" id="quickRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">固定比率</h6>
+                                <h3 class="card-title text-warning" id="fixedRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">固定長期適合率</h6>
+                                <h3 class="card-title text-warning" id="fixedLongTermSuitabilityRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">自己資本比率</h6>
+                                <h3 class="card-title text-warning" id="equityRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">負債比率</h6>
+                                <h3 class="card-title text-warning" id="debtRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">インタレスト・カバレッジ・レシオ</h6>
+                                <h3 class="card-title text-warning" id="interestCoverageRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="financialStrengthChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 生産力指標 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-industry me-2"></i>生産力指標</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">総資産回転率</h6>
+                                <h3 class="card-title text-danger" id="totalAssetsTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">固定資産回転率</h6>
+                                <h3 class="card-title text-danger" id="fixedAssetsTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">流動資産回転率</h6>
+                                <h3 class="card-title text-danger" id="currentAssetsTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上債権回転率</h6>
+                                <h3 class="card-title text-danger" id="accountsReceivableTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上債権回転期間</h6>
+                                <h3 class="card-title text-danger" id="accountsReceivableTurnoverDays">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">棚卸資産回転率</h6>
+                                <h3 class="card-title text-danger" id="inventoryTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">棚卸資産回転期間</h6>
+                                <h3 class="card-title text-danger" id="inventoryTurnoverDays">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">仕入債務回転率</h6>
+                                <h3 class="card-title text-danger" id="accountsPayableTurnover">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">仕入債務回転期間</h6>
+                                <h3 class="card-title text-danger" id="accountsPayableTurnoverDays">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="productivityChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('decision.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 企業選択時に会計年度を取得
+document.getElementById('companySelect').addEventListener('change', function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscalYearSelect');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">企業を選択してください</option>';
+        return;
+    }
+    
+    // 会計年度を取得
+    fetch(`/decision/fiscal-years/by-company/${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
+            data.forEach(fy => {
+                const option = document.createElement('option');
+                option.value = fy.id;
+                option.textContent = fy.year_name;
+                fiscalYearSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('会計年度の取得に失敗しました。');
+        });
+});
+
+// 分析実行
+document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const companyId = document.getElementById('companySelect').value;
+    const fiscalYearId = document.getElementById('fiscalYearSelect').value;
+    
+    if (!companyId || !fiscalYearId) {
+        alert('企業と会計年度を選択してください。');
+        return;
+    }
+    
+    // 分析を実行
+    fetch(`/decision/financial-analysis-detailed/analyze?company_id=${companyId}&fiscal_year_id=${fiscalYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            // 基本情報を表示
+            document.getElementById('companyName').textContent = data.company_name;
+            document.getElementById('fiscalYearName').textContent = data.fiscal_year_name;
+            document.getElementById('fiscalPeriod').textContent = `${data.start_date} 〜 ${data.end_date}`;
+            document.getElementById('analysisDate').textContent = new Date().toLocaleDateString('ja-JP');
+            
+            // 成長力指標を表示
+            if (data.growth && Object.keys(data.growth).length > 0) {
+                document.getElementById('salesGrowthRate').textContent = data.growth.sales_growth_rate.toFixed(2) + '%';
+                document.getElementById('totalAssetsGrowthRate').textContent = data.growth.total_assets_growth_rate.toFixed(2) + '%';
+                document.getElementById('netAssetsGrowthRate').textContent = data.growth.net_assets_growth_rate.toFixed(2) + '%';
+                document.getElementById('employeesGrowthRate').textContent = data.growth.employees_growth_rate.toFixed(2) + '%';
+                document.getElementById('growthIndicators').style.display = 'flex';
+                document.getElementById('growthMessage').style.display = 'none';
+            } else {
+                document.getElementById('growthIndicators').style.display = 'none';
+                document.getElementById('growthMessage').style.display = 'block';
+            }
+            
+            // 収益力指標を表示
+            document.getElementById('grossProfitMargin').textContent = data.profitability.gross_profit_margin.toFixed(2) + '%';
+            document.getElementById('operatingProfitMargin').textContent = data.profitability.operating_profit_margin.toFixed(2) + '%';
+            document.getElementById('ordinaryProfitMargin').textContent = data.profitability.ordinary_profit_margin.toFixed(2) + '%';
+            document.getElementById('netProfitMargin').textContent = data.profitability.net_profit_margin.toFixed(2) + '%';
+            document.getElementById('roa').textContent = data.profitability.roa.toFixed(2) + '%';
+            document.getElementById('roe').textContent = data.profitability.roe.toFixed(2) + '%';
+            document.getElementById('laborProductivity').textContent = data.profitability.labor_productivity.toLocaleString() + '円/人';
+            document.getElementById('laborShareRatio').textContent = data.profitability.labor_share_ratio.toFixed(2) + '%';
+            
+            // 資金力指標を表示
+            document.getElementById('currentRatio').textContent = data.financial_strength.current_ratio.toFixed(2) + '%';
+            document.getElementById('quickRatio').textContent = data.financial_strength.quick_ratio.toFixed(2) + '%';
+            document.getElementById('fixedRatio').textContent = data.financial_strength.fixed_ratio.toFixed(2) + '%';
+            document.getElementById('fixedLongTermSuitabilityRatio').textContent = data.financial_strength.fixed_long_term_suitability_ratio.toFixed(2) + '%';
+            document.getElementById('equityRatio').textContent = data.financial_strength.equity_ratio.toFixed(2) + '%';
+            document.getElementById('debtRatio').textContent = data.financial_strength.debt_ratio.toFixed(2) + '%';
+            document.getElementById('interestCoverageRatio').textContent = data.financial_strength.interest_coverage_ratio.toFixed(2) + '倍';
+            
+            // 生産力指標を表示
+            document.getElementById('totalAssetsTurnover').textContent = data.productivity.total_assets_turnover.toFixed(2) + '回';
+            document.getElementById('fixedAssetsTurnover').textContent = data.productivity.fixed_assets_turnover.toFixed(2) + '回';
+            document.getElementById('currentAssetsTurnover').textContent = data.productivity.current_assets_turnover.toFixed(2) + '回';
+            document.getElementById('accountsReceivableTurnover').textContent = data.productivity.accounts_receivable_turnover.toFixed(2) + '回';
+            document.getElementById('accountsReceivableTurnoverDays').textContent = data.productivity.accounts_receivable_turnover_days.toFixed(0) + '日';
+            document.getElementById('inventoryTurnover').textContent = data.productivity.inventory_turnover.toFixed(2) + '回';
+            document.getElementById('inventoryTurnoverDays').textContent = data.productivity.inventory_turnover_days.toFixed(0) + '日';
+            document.getElementById('accountsPayableTurnover').textContent = data.productivity.accounts_payable_turnover.toFixed(2) + '回';
+            document.getElementById('accountsPayableTurnoverDays').textContent = data.productivity.accounts_payable_turnover_days.toFixed(0) + '日';
+            
+            // 分析結果エリアを表示
+            document.getElementById('analysisResults').style.display = 'block';
+            
+            // グラフを描画
+            drawCharts(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('分析の実行に失敗しました。');
+        });
+});
+
+function drawCharts(data) {
+    // 成長力グラフ
+    if (data.growth && Object.keys(data.growth).length > 0) {
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        new Chart(growthCtx, {
+            type: 'bar',
+            data: {
+                labels: ['売上高成長率', '総資産成長率', '純資産成長率', '従業員数成長率'],
+                datasets: [{
+                    label: '成長率 (%)',
+                    data: [
+                        data.growth.sales_growth_rate,
+                        data.growth.total_assets_growth_rate,
+                        data.growth.net_assets_growth_rate,
+                        data.growth.employees_growth_rate
+                    ],
+                    backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '成長率 (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 収益力グラフ
+    const profitabilityCtx = document.getElementById('profitabilityChart').getContext('2d');
+    new Chart(profitabilityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['売上高総利益率', '売上高営業利益率', '売上高経常利益率', '売上高当期純利益率', 'ROA', 'ROE'],
+            datasets: [{
+                label: '利益率 (%)',
+                data: [
+                    data.profitability.gross_profit_margin,
+                    data.profitability.operating_profit_margin,
+                    data.profitability.ordinary_profit_margin,
+                    data.profitability.net_profit_margin,
+                    data.profitability.roa,
+                    data.profitability.roe
+                ],
+                backgroundColor: 'rgba(23, 162, 184, 0.6)',
+                borderColor: 'rgba(23, 162, 184, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '利益率 (%)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // 資金力グラフ
+    const financialStrengthCtx = document.getElementById('financialStrengthChart').getContext('2d');
+    new Chart(financialStrengthCtx, {
+        type: 'bar',
+        data: {
+            labels: ['流動比率', '当座比率', '固定比率', '固定長期適合率', '自己資本比率', '負債比率'],
+            datasets: [{
+                label: '比率 (%)',
+                data: [
+                    data.financial_strength.current_ratio,
+                    data.financial_strength.quick_ratio,
+                    data.financial_strength.fixed_ratio,
+                    data.financial_strength.fixed_long_term_suitability_ratio,
+                    data.financial_strength.equity_ratio,
+                    data.financial_strength.debt_ratio
+                ],
+                backgroundColor: 'rgba(255, 193, 7, 0.6)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '比率 (%)'
+                    }
+                }
+            }
+        }
+    });
+    
+    // 生産力グラフ
+    const productivityCtx = document.getElementById('productivityChart').getContext('2d');
+    new Chart(productivityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['総資産回転率', '固定資産回転率', '流動資産回転率', '売上債権回転率', '棚卸資産回転率', '仕入債務回転率'],
+            datasets: [{
+                label: '回転率 (回)',
+                data: [
+                    data.productivity.total_assets_turnover,
+                    data.productivity.fixed_assets_turnover,
+                    data.productivity.current_assets_turnover,
+                    data.productivity.accounts_receivable_turnover,
+                    data.productivity.inventory_turnover,
+                    data.productivity.accounts_payable_turnover
+                ],
+                backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '回転率 (回)'
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
