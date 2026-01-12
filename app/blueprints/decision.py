@@ -1134,3 +1134,99 @@ def financial_analysis_detailed_analyze():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 損益分岐点分析ルート
+# ============================================================
+
+@bp.route('/breakeven-analysis')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def breakeven_analysis():
+    """損益分岐点分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        # テナントの企業一覧を取得
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('breakeven_analysis.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/breakeven-analysis/analyze')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def breakeven_analysis_analyze():
+    """損益分岐点分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    
+    if not company_id or not fiscal_year_id:
+        return jsonify({'error': '企業IDと会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.breakeven_analysis import analyze_cost_volume_profit, estimate_cost_structure
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 損益計算書を取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss:
+            return jsonify({'error': '損益計算書が見つかりません'}), 404
+        
+        # 費用構造を推定
+        cost_structure = estimate_cost_structure(
+            sales=profit_loss.sales,
+            cost_of_sales=profit_loss.cost_of_sales,
+            operating_expenses=profit_loss.operating_expenses,
+            operating_income=profit_loss.operating_income
+        )
+        
+        # CVP分析を実行
+        cvp_result = analyze_cost_volume_profit(
+            sales=profit_loss.sales,
+            variable_costs=cost_structure['variable_costs'],
+            fixed_costs=cost_structure['fixed_costs']
+        )
+        
+        # 結果を返す
+        return jsonify({
+            'company_name': company.name,
+            'fiscal_year_name': fiscal_year.year_name,
+            'start_date': fiscal_year.start_date.strftime('%Y年%m月%d日'),
+            'end_date': fiscal_year.end_date.strftime('%Y年%m月%d日'),
+            **cvp_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

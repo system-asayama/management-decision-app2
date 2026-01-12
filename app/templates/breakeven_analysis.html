@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block title %}損益分岐点分析{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-chart-area me-2"></i>損益分岐点分析</h2>
+            <p class="text-muted">損益分岐点売上高、安全余裕率、限界利益率などを分析します。</p>
+        </div>
+    </div>
+
+    <!-- 企業・年度選択フォーム -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="analysisForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" required>
+                        <option value="">選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" required>
+                        <option value="">企業を選択してください</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-chart-bar me-2"></i>分析実行
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 分析結果表示エリア -->
+    <div id="analysisResults" style="display: none;">
+        <!-- 基本情報 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>基本情報</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>企業名:</strong> <span id="companyName"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>会計年度:</strong> <span id="fiscalYearName"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>期間:</strong> <span id="fiscalPeriod"></span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>分析日:</strong> <span id="analysisDate"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 費用構造 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>費用構造</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高</h6>
+                                <h3 class="card-title text-info" id="sales">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">変動費</h6>
+                                <h3 class="card-title text-success" id="variableCosts">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">固定費</h6>
+                                <h3 class="card-title text-warning" id="fixedCosts">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">営業利益</h6>
+                                <h3 class="card-title text-primary" id="operatingIncome">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="costStructureChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 損益分岐点分析結果 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>損益分岐点分析結果</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">損益分岐点売上高</h6>
+                                <h3 class="card-title text-danger" id="breakevenSales">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">損益分岐点比率</h6>
+                                <h3 class="card-title text-danger" id="breakevenRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">安全余裕率</h6>
+                                <h3 class="card-title text-success" id="safetyMarginRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">限界利益</h6>
+                                <h3 class="card-title text-info" id="contributionMargin">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">限界利益率</h6>
+                                <h3 class="card-title text-info" id="contributionMarginRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">変動費率</h6>
+                                <h3 class="card-title text-warning" id="variableCostRatio">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="breakevenChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 目標利益シミュレーション -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>目標利益シミュレーション</h5>
+            </div>
+            <div class="card-body">
+                <form id="targetProfitForm" class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label for="targetProfit" class="form-label">目標営業利益（円）</label>
+                        <input type="number" class="form-control" id="targetProfit" value="10000000" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-calculator me-2"></i>必要売上高を計算
+                        </button>
+                    </div>
+                </form>
+                <div id="targetProfitResult" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-2 text-muted">目標利益</h6>
+                                    <h3 class="card-title text-success" id="targetProfitValue">-</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-2 text-muted">必要売上高</h6>
+                                    <h3 class="card-title text-primary" id="targetSalesValue">-</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('decision.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let currentAnalysisData = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('companySelect').addEventListener('change', function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscalYearSelect');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">企業を選択してください</option>';
+        return;
+    }
+    
+    // 会計年度を取得
+    fetch(`/decision/fiscal-years/by-company/${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
+            data.forEach(fy => {
+                const option = document.createElement('option');
+                option.value = fy.id;
+                option.textContent = fy.year_name;
+                fiscalYearSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('会計年度の取得に失敗しました。');
+        });
+});
+
+// 分析実行
+document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const companyId = document.getElementById('companySelect').value;
+    const fiscalYearId = document.getElementById('fiscalYearSelect').value;
+    
+    if (!companyId || !fiscalYearId) {
+        alert('企業と会計年度を選択してください。');
+        return;
+    }
+    
+    // 分析を実行
+    fetch(`/decision/breakeven-analysis/analyze?company_id=${companyId}&fiscal_year_id=${fiscalYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            currentAnalysisData = data;
+            
+            // 基本情報を表示
+            document.getElementById('companyName').textContent = data.company_name;
+            document.getElementById('fiscalYearName').textContent = data.fiscal_year_name;
+            document.getElementById('fiscalPeriod').textContent = `${data.start_date} 〜 ${data.end_date}`;
+            document.getElementById('analysisDate').textContent = new Date().toLocaleDateString('ja-JP');
+            
+            // 費用構造を表示
+            document.getElementById('sales').textContent = data.sales.toLocaleString() + '円';
+            document.getElementById('variableCosts').textContent = data.variable_costs.toLocaleString() + '円';
+            document.getElementById('fixedCosts').textContent = data.fixed_costs.toLocaleString() + '円';
+            document.getElementById('operatingIncome').textContent = data.operating_income.toLocaleString() + '円';
+            
+            // 損益分岐点分析結果を表示
+            document.getElementById('breakevenSales').textContent = Math.round(data.breakeven_sales).toLocaleString() + '円';
+            document.getElementById('breakevenRatio').textContent = data.breakeven_ratio.toFixed(2) + '%';
+            document.getElementById('safetyMarginRatio').textContent = data.safety_margin_ratio.toFixed(2) + '%';
+            document.getElementById('contributionMargin').textContent = data.contribution_margin.toLocaleString() + '円';
+            document.getElementById('contributionMarginRatio').textContent = data.contribution_margin_ratio.toFixed(2) + '%';
+            document.getElementById('variableCostRatio').textContent = data.variable_cost_ratio.toFixed(2) + '%';
+            
+            // 分析結果エリアを表示
+            document.getElementById('analysisResults').style.display = 'block';
+            
+            // グラフを描画
+            drawCharts(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('分析の実行に失敗しました。');
+        });
+});
+
+// 目標利益シミュレーション
+document.getElementById('targetProfitForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentAnalysisData) {
+        alert('先に損益分岐点分析を実行してください。');
+        return;
+    }
+    
+    const targetProfit = parseFloat(document.getElementById('targetProfit').value);
+    
+    // 必要売上高を計算
+    const targetSales = ((currentAnalysisData.fixed_costs + targetProfit) / currentAnalysisData.contribution_margin_ratio) * 100;
+    
+    // 結果を表示
+    document.getElementById('targetProfitValue').textContent = targetProfit.toLocaleString() + '円';
+    document.getElementById('targetSalesValue').textContent = Math.round(targetSales).toLocaleString() + '円';
+    document.getElementById('targetProfitResult').style.display = 'block';
+});
+
+function drawCharts(data) {
+    // 費用構造グラフ
+    const costStructureCtx = document.getElementById('costStructureChart').getContext('2d');
+    new Chart(costStructureCtx, {
+        type: 'bar',
+        data: {
+            labels: ['売上高', '変動費', '固定費', '営業利益'],
+            datasets: [{
+                label: '金額（円）',
+                data: [
+                    data.sales,
+                    data.variable_costs,
+                    data.fixed_costs,
+                    data.operating_income
+                ],
+                backgroundColor: [
+                    'rgba(23, 162, 184, 0.6)',
+                    'rgba(40, 167, 69, 0.6)',
+                    'rgba(255, 193, 7, 0.6)',
+                    'rgba(0, 123, 255, 0.6)'
+                ],
+                borderColor: [
+                    'rgba(23, 162, 184, 1)',
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(0, 123, 255, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '金額（円）'
+                    }
+                }
+            }
+        }
+    });
+    
+    // 損益分岐点グラフ
+    const breakevenCtx = document.getElementById('breakevenChart').getContext('2d');
+    
+    // 売上高の範囲を計算（0から現在の売上高の150%まで）
+    const maxSales = data.sales * 1.5;
+    const salesRange = [];
+    const totalCostsLine = [];
+    const salesLine = [];
+    
+    for (let i = 0; i <= 10; i++) {
+        const sales = (maxSales / 10) * i;
+        salesRange.push(Math.round(sales / 1000000)); // 百万円単位
+        
+        // 総費用 = 変動費 + 固定費
+        const variableCost = sales * (data.variable_cost_ratio / 100);
+        const totalCost = variableCost + data.fixed_costs;
+        totalCostsLine.push(totalCost / 1000000); // 百万円単位
+        
+        salesLine.push(sales / 1000000); // 百万円単位
+    }
+    
+    new Chart(breakevenCtx, {
+        type: 'line',
+        data: {
+            labels: salesRange,
+            datasets: [
+                {
+                    label: '売上高',
+                    data: salesLine,
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: false
+                },
+                {
+                    label: '総費用',
+                    data: totalCostsLine,
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 2,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '売上高（百万円）'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '金額（百万円）'
+                    }
+                }
+            },
+            plugins: {
+                annotation: {
+                    annotations: {
+                        line1: {
+                            type: 'line',
+                            xMin: data.breakeven_sales / 1000000,
+                            xMax: data.breakeven_sales / 1000000,
+                            borderColor: 'rgba(255, 193, 7, 1)',
+                            borderWidth: 2,
+                            label: {
+                                content: '損益分岐点',
+                                enabled: true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
