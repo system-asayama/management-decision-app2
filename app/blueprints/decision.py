@@ -1868,3 +1868,108 @@ def contribution_analysis_analyze():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# 最小二乗法による予測
+# ============================================================
+
+@bp.route('/least-squares-forecast')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def least_squares_forecast():
+    """最小二乗法による予測ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('least_squares_forecast.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/least-squares-forecast/forecast')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def least_squares_forecast_forecast():
+    """最小二乗法による予測を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    forecast_years = request.args.get('forecast_years', type=int, default=5)
+    
+    if not company_id:
+        return jsonify({'error': '企業IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.least_squares_forecaster import forecast_sales
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度と財務データを取得
+        fiscal_years = db.query(FiscalYear).filter(
+            FiscalYear.company_id == company_id
+        ).order_by(FiscalYear.start_date).all()
+        
+        if len(fiscal_years) < 2:
+            return jsonify({'error': '最小2年分の会計年度データが必要です'}), 400
+        
+        # 売上高データを収集
+        sales_data = []
+        operating_income_data = []
+        net_income_data = []
+        
+        for fy in fiscal_years:
+            profit_loss = db.query(ProfitLossStatement).filter(
+                ProfitLossStatement.fiscal_year_id == fy.id
+            ).first()
+            
+            if profit_loss:
+                # 年度番号を抽出（例: "2023年度" -> 2023）
+                year_num = int(fy.year_name.replace('年度', ''))
+                
+                sales_data.append({
+                    'year': year_num,
+                    'sales': float(profit_loss.sales)
+                })
+                
+                operating_income_data.append({
+                    'year': year_num,
+                    'sales': float(profit_loss.operating_income)
+                })
+                
+                net_income_data.append({
+                    'year': year_num,
+                    'sales': float(profit_loss.net_income)
+                })
+        
+        if len(sales_data) < 2:
+            return jsonify({'error': '最小2年分の財務データが必要です'}), 400
+        
+        # 各指標の予測を実行
+        sales_forecast = forecast_sales(sales_data, forecast_years)
+        operating_income_forecast = forecast_sales(operating_income_data, forecast_years)
+        net_income_forecast = forecast_sales(net_income_data, forecast_years)
+        
+        return jsonify({
+            'sales': sales_forecast,
+            'operating_income': operating_income_forecast,
+            'net_income': net_income_forecast
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}最小二乗法による予測{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-chart-line me-2"></i>最小二乗法による予測</h2>
+    <p class="text-muted">過去のデータから線形回帰を用いて将来の財務指標を予測します。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">予測条件</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="company_select" class="form-label">企業選択</label>
+                        <select class="form-select" id="company_select">
+                            <option value="">企業を選択してください</option>
+                            {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="forecast_years" class="form-label">予測年数</label>
+                        <input type="number" class="form-control" id="forecast_years" value="5" min="1" max="10">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="runForecast()">
+                <i class="fas fa-play me-2"></i>予測実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 予測結果 -->
+    <div id="forecast_results" class="mt-4" style="display: none;">
+        <!-- 売上高予測 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">売上高予測</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">傾き（年間変化）</h6>
+                                <h4 id="sales_slope">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">切片</h6>
+                                <h4 id="sales_intercept">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>決定係数（R²）</h6>
+                                <h4 id="sales_r_squared">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>トレンド強度</h6>
+                                <h4 id="sales_trend">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <p><strong>回帰式:</strong> <span id="sales_equation">-</span></p>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>予測値</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>年度</th>
+                                    <th>予測売上高</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales_forecast_table">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="sales_chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 営業利益予測 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">営業利益予測</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">傾き（年間変化）</h6>
+                                <h4 id="operating_income_slope">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">切片</h6>
+                                <h4 id="operating_income_intercept">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>決定係数（R²）</h6>
+                                <h4 id="operating_income_r_squared">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>トレンド強度</h6>
+                                <h4 id="operating_income_trend">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <p><strong>回帰式:</strong> <span id="operating_income_equation">-</span></p>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>予測値</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>年度</th>
+                                    <th>予測営業利益</th>
+                                </tr>
+                            </thead>
+                            <tbody id="operating_income_forecast_table">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="operating_income_chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 当期純利益予測 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">当期純利益予測</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">傾き（年間変化）</h6>
+                                <h4 id="net_income_slope">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">切片</h6>
+                                <h4 id="net_income_intercept">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>決定係数（R²）</h6>
+                                <h4 id="net_income_r_squared">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>トレンド強度</h6>
+                                <h4 id="net_income_trend">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <p><strong>回帰式:</strong> <span id="net_income_equation">-</span></p>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>予測値</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>年度</th>
+                                    <th>予測当期純利益</th>
+                                </tr>
+                            </thead>
+                            <tbody id="net_income_forecast_table">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="net_income_chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let salesChart = null;
+let operatingIncomeChart = null;
+let netIncomeChart = null;
+
+async function runForecast() {
+    const companyId = document.getElementById('company_select').value;
+    const forecastYears = parseInt(document.getElementById('forecast_years').value);
+    
+    if (!companyId) {
+        alert('企業を選択してください');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/least-squares-forecast/forecast?company_id=${companyId}&forecast_years=${forecastYears}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        displayResults(data);
+    } catch (error) {
+        console.error('予測の実行に失敗しました:', error);
+        alert('予測の実行に失敗しました');
+    }
+}
+
+function displayResults(data) {
+    // 売上高予測を表示
+    displayMetricResults('sales', data.sales);
+    
+    // 営業利益予測を表示
+    displayMetricResults('operating_income', data.operating_income);
+    
+    // 当期純利益予測を表示
+    displayMetricResults('net_income', data.net_income);
+    
+    // 結果エリアを表示
+    document.getElementById('forecast_results').style.display = 'block';
+}
+
+function displayMetricResults(metric, data) {
+    if (data.error) {
+        document.getElementById(`${metric}_slope`).textContent = 'エラー';
+        document.getElementById(`${metric}_intercept`).textContent = 'エラー';
+        document.getElementById(`${metric}_r_squared`).textContent = 'エラー';
+        document.getElementById(`${metric}_trend`).textContent = 'エラー';
+        document.getElementById(`${metric}_equation`).textContent = data.error;
+        return;
+    }
+    
+    // サマリーを表示
+    document.getElementById(`${metric}_slope`).textContent = formatNumber(data.slope) + '円';
+    document.getElementById(`${metric}_intercept`).textContent = formatNumber(data.intercept) + '円';
+    document.getElementById(`${metric}_r_squared`).textContent = data.r_squared.toFixed(3);
+    document.getElementById(`${metric}_trend`).textContent = getTrendStrength(data.r_squared);
+    document.getElementById(`${metric}_equation`).textContent = data.equation;
+    
+    // 予測値テーブルを表示
+    const tableBody = document.getElementById(`${metric}_forecast_table`);
+    tableBody.innerHTML = '';
+    
+    data.future_predictions.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.year}年度</td>
+            <td>${formatNumber(row.predicted)}円</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    // グラフを表示
+    displayChart(metric, data);
+}
+
+function displayChart(metric, data) {
+    const ctx = document.getElementById(`${metric}_chart`).getContext('2d');
+    
+    // 既存のチャートを破棄
+    if (metric === 'sales' && salesChart) {
+        salesChart.destroy();
+    } else if (metric === 'operating_income' && operatingIncomeChart) {
+        operatingIncomeChart.destroy();
+    } else if (metric === 'net_income' && netIncomeChart) {
+        netIncomeChart.destroy();
+    }
+    
+    // 過去データと予測データを結合
+    const allYears = [
+        ...data.historical_predictions.map(d => d.year + '年度'),
+        ...data.future_predictions.map(d => d.year + '年度')
+    ];
+    
+    const actualData = [
+        ...data.historical_predictions.map(d => d.actual),
+        ...Array(data.future_predictions.length).fill(null)
+    ];
+    
+    const predictedData = [
+        ...data.historical_predictions.map(d => d.predicted),
+        ...data.future_predictions.map(d => d.predicted)
+    ];
+    
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allYears,
+            datasets: [
+                {
+                    label: '実績値',
+                    data: actualData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2
+                },
+                {
+                    label: '予測値',
+                    data: predictedData,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 2,
+                    borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '金額（円）'
+                    }
+                }
+            }
+        }
+    });
+    
+    // チャートを保存
+    if (metric === 'sales') {
+        salesChart = chart;
+    } else if (metric === 'operating_income') {
+        operatingIncomeChart = chart;
+    } else if (metric === 'net_income') {
+        netIncomeChart = chart;
+    }
+}
+
+function getTrendStrength(rSquared) {
+    if (rSquared >= 0.9) return '非常に強い';
+    if (rSquared >= 0.7) return '強い';
+    if (rSquared >= 0.5) return '中程度';
+    if (rSquared >= 0.3) return '弱い';
+    return '非常に弱い';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}
