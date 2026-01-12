@@ -1230,3 +1230,293 @@ def breakeven_analysis_analyze():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 予算管理ルート
+# ============================================================
+
+@bp.route('/budget')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def budget_management():
+    """予算管理ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        # テナントの企業一覧を取得
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('budget_management.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/budget/analyze')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def budget_analyze():
+    """予算vs実績分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.budget_analysis import analyze_budget_vs_actual, calculate_budget_achievement_summary
+        from ..models_decision import Budget
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 予算を取得
+        budget = db.query(Budget).filter(
+            Budget.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not budget:
+            return jsonify({
+                'error': '予算が登録されていません',
+                'has_budget': False
+            })
+        
+        # 実績（損益計算書と貸借対照表）を取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'error': '実績データが見つかりません'}), 404
+        
+        # 予算データを辞書に変換
+        budget_data = {
+            'budget_sales': float(budget.budget_sales or 0),
+            'budget_cost_of_sales': float(budget.budget_cost_of_sales or 0),
+            'budget_gross_profit': float(budget.budget_gross_profit or 0),
+            'budget_operating_expenses': float(budget.budget_operating_expenses or 0),
+            'budget_operating_income': float(budget.budget_operating_income or 0),
+            'budget_ordinary_income': float(budget.budget_ordinary_income or 0),
+            'budget_net_income': float(budget.budget_net_income or 0),
+            'budget_current_assets': float(budget.budget_current_assets or 0),
+            'budget_fixed_assets': float(budget.budget_fixed_assets or 0),
+            'budget_total_assets': float(budget.budget_total_assets or 0),
+            'budget_current_liabilities': float(budget.budget_current_liabilities or 0),
+            'budget_fixed_liabilities': float(budget.budget_fixed_liabilities or 0),
+            'budget_total_liabilities': float(budget.budget_total_liabilities or 0),
+            'budget_total_equity': float(budget.budget_total_equity or 0)
+        }
+        
+        # 実績データを辞書に変換
+        actual_data = {
+            'sales': float(profit_loss.sales or 0),
+            'cost_of_sales': float(profit_loss.cost_of_sales or 0),
+            'gross_profit': float(profit_loss.gross_profit or 0),
+            'operating_expenses': float(profit_loss.operating_expenses or 0),
+            'operating_income': float(profit_loss.operating_income or 0),
+            'ordinary_income': float(profit_loss.ordinary_income or 0),
+            'net_income': float(profit_loss.net_income or 0),
+            'current_assets': float(balance_sheet.current_assets or 0),
+            'fixed_assets': float(balance_sheet.fixed_assets or 0),
+            'total_assets': float(balance_sheet.total_assets or 0),
+            'current_liabilities': float(balance_sheet.current_liabilities or 0),
+            'fixed_liabilities': float(balance_sheet.fixed_liabilities or 0),
+            'total_liabilities': float(balance_sheet.total_liabilities or 0),
+            'total_equity': float(balance_sheet.total_equity or 0)
+        }
+        
+        # 予算vs実績分析を実行
+        analysis_result = analyze_budget_vs_actual(budget_data, actual_data)
+        
+        # 予算達成度サマリーを計算
+        summary = calculate_budget_achievement_summary(analysis_result)
+        
+        # 結果を返す
+        return jsonify({
+            'has_budget': True,
+            'budget': {
+                'id': budget.id,
+                **budget_data
+            },
+            'pl': analysis_result['pl'],
+            'bs': analysis_result['bs'],
+            'summary': summary
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/budget', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def budget_create():
+    """予算を登録"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    fiscal_year_id = data.get('fiscal_year_id')
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..models_decision import Budget
+        
+        # 会計年度の存在確認
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業のテナント確認
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 既存の予算があるか確認
+        existing_budget = db.query(Budget).filter(
+            Budget.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if existing_budget:
+            return jsonify({'error': 'この会計年度の予算は既に登録されています'}), 400
+        
+        # 予算を作成
+        budget = Budget(
+            fiscal_year_id=fiscal_year_id,
+            budget_sales=data.get('budget_sales'),
+            budget_cost_of_sales=data.get('budget_cost_of_sales'),
+            budget_gross_profit=data.get('budget_gross_profit'),
+            budget_operating_expenses=data.get('budget_operating_expenses'),
+            budget_operating_income=data.get('budget_operating_income'),
+            budget_non_operating_income=data.get('budget_non_operating_income'),
+            budget_non_operating_expenses=data.get('budget_non_operating_expenses'),
+            budget_ordinary_income=data.get('budget_ordinary_income'),
+            budget_extraordinary_income=data.get('budget_extraordinary_income'),
+            budget_extraordinary_loss=data.get('budget_extraordinary_loss'),
+            budget_income_before_tax=data.get('budget_income_before_tax'),
+            budget_income_tax=data.get('budget_income_tax'),
+            budget_net_income=data.get('budget_net_income'),
+            budget_current_assets=data.get('budget_current_assets'),
+            budget_fixed_assets=data.get('budget_fixed_assets'),
+            budget_total_assets=data.get('budget_total_assets'),
+            budget_current_liabilities=data.get('budget_current_liabilities'),
+            budget_fixed_liabilities=data.get('budget_fixed_liabilities'),
+            budget_total_liabilities=data.get('budget_total_liabilities'),
+            budget_total_equity=data.get('budget_total_equity'),
+            notes=data.get('notes')
+        )
+        
+        db.add(budget)
+        db.commit()
+        
+        return jsonify({'message': '予算を登録しました', 'id': budget.id})
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/budget/<int:budget_id>', methods=['PUT'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def budget_update(budget_id):
+    """予算を更新"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    db = SessionLocal()
+    try:
+        from ..models_decision import Budget
+        
+        # 予算を取得
+        budget = db.query(Budget).filter(Budget.id == budget_id).first()
+        
+        if not budget:
+            return jsonify({'error': '予算が見つかりません'}), 404
+        
+        # 会計年度の企業のテナント確認
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == budget.fiscal_year_id
+        ).first()
+        
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 予算を更新
+        budget.budget_sales = data.get('budget_sales')
+        budget.budget_cost_of_sales = data.get('budget_cost_of_sales')
+        budget.budget_gross_profit = data.get('budget_gross_profit')
+        budget.budget_operating_expenses = data.get('budget_operating_expenses')
+        budget.budget_operating_income = data.get('budget_operating_income')
+        budget.budget_non_operating_income = data.get('budget_non_operating_income')
+        budget.budget_non_operating_expenses = data.get('budget_non_operating_expenses')
+        budget.budget_ordinary_income = data.get('budget_ordinary_income')
+        budget.budget_extraordinary_income = data.get('budget_extraordinary_income')
+        budget.budget_extraordinary_loss = data.get('budget_extraordinary_loss')
+        budget.budget_income_before_tax = data.get('budget_income_before_tax')
+        budget.budget_income_tax = data.get('budget_income_tax')
+        budget.budget_net_income = data.get('budget_net_income')
+        budget.budget_current_assets = data.get('budget_current_assets')
+        budget.budget_fixed_assets = data.get('budget_fixed_assets')
+        budget.budget_total_assets = data.get('budget_total_assets')
+        budget.budget_current_liabilities = data.get('budget_current_liabilities')
+        budget.budget_fixed_liabilities = data.get('budget_fixed_liabilities')
+        budget.budget_total_liabilities = data.get('budget_total_liabilities')
+        budget.budget_total_equity = data.get('budget_total_equity')
+        budget.notes = data.get('notes')
+        
+        db.commit()
+        
+        return jsonify({'message': '予算を更新しました'})
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

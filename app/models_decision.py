@@ -630,3 +630,49 @@ class AccountMapping(Base):
     
     # リレーション
     company = relationship("Company", back_populates="account_mappings")
+
+
+# ==================== 予算管理 ====================
+
+class Budget(Base):
+    """予算テーブル"""
+    __tablename__ = 'budgets'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
+    
+    # 損益計算書予算
+    budget_sales = Column(Numeric(15, 2))  # 予算売上高
+    budget_cost_of_sales = Column(Numeric(15, 2))  # 予算売上原価
+    budget_gross_profit = Column(Numeric(15, 2))  # 予算売上総利益
+    budget_operating_expenses = Column(Numeric(15, 2))  # 予算販管費
+    budget_operating_income = Column(Numeric(15, 2))  # 予算営業利益
+    budget_non_operating_income = Column(Numeric(15, 2))  # 予算営業外収益
+    budget_non_operating_expenses = Column(Numeric(15, 2))  # 予算営業外費用
+    budget_ordinary_income = Column(Numeric(15, 2))  # 予算経常利益
+    budget_extraordinary_income = Column(Numeric(15, 2))  # 予算特別利益
+    budget_extraordinary_loss = Column(Numeric(15, 2))  # 予算特別損失
+    budget_income_before_tax = Column(Numeric(15, 2))  # 予算税引前当期純利益
+    budget_income_tax = Column(Numeric(15, 2))  # 予算法人税等
+    budget_net_income = Column(Numeric(15, 2))  # 予算当期純利益
+    
+    # 貸借対照表予算
+    budget_current_assets = Column(Numeric(15, 2))  # 予算流動資産
+    budget_fixed_assets = Column(Numeric(15, 2))  # 予算固定資産
+    budget_total_assets = Column(Numeric(15, 2))  # 予算総資産
+    budget_current_liabilities = Column(Numeric(15, 2))  # 予算流動負債
+    budget_fixed_liabilities = Column(Numeric(15, 2))  # 予算固定負債
+    budget_total_liabilities = Column(Numeric(15, 2))  # 予算総負債
+    budget_total_equity = Column(Numeric(15, 2))  # 予算純資産
+    
+    # メタデータ
+    notes = Column(Text)  # 備考
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+    
+    # リレーション
+    fiscal_year = relationship("FiscalYear", back_populates="budgets")
+
+
+# FiscalYearモデルにbudgetsリレーションを追加（既存のFiscalYearクラスに追加する必要があります）
+# fiscal_year.budgets = relationship("Budget", back_populates="fiscal_year")

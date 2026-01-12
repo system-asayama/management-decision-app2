@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}予算管理{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-calculator me-2"></i>予算管理</h2>
+            <p class="text-muted">予算と実績を比較し、達成率や差異を分析します。</p>
+        </div>
+    </div>
+
+    <!-- 企業・年度選択フォーム -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="analysisForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" required>
+                        <option value="">選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" required>
+                        <option value="">企業を選択してください</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-chart-bar me-2"></i>分析実行
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 予算登録・編集ボタン -->
+    <div class="card shadow-sm mb-4" id="budgetActions" style="display: none;">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-success" id="createBudgetBtn">
+                        <i class="fas fa-plus me-2"></i>予算を登録
+                    </button>
+                    <button type="button" class="btn btn-warning" id="editBudgetBtn" style="display: none;">
+                        <i class="fas fa-edit me-2"></i>予算を編集
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分析結果表示エリア -->
+    <div id="analysisResults" style="display: none;">
+        <!-- 予算達成度サマリー -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header text-white" id="summaryHeader">
+                <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>予算達成度サマリー</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">総合達成率</h6>
+                                <h2 class="card-title" id="overallAchievement">-</h2>
+                                <p class="mb-0"><span class="badge" id="evaluationBadge">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">売上高達成率</h6>
+                                <h3 class="card-title text-info" id="salesAchievement">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">営業利益達成率</h6>
+                                <h3 class="card-title text-success" id="operatingIncomeAchievement">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">当期純利益達成率</h6>
+                                <h3 class="card-title text-warning" id="netIncomeAchievement">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 損益計算書 予算vs実績 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>損益計算書 予算vs実績</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>項目</th>
+                                <th class="text-end">予算（円）</th>
+                                <th class="text-end">実績（円）</th>
+                                <th class="text-end">差異（円）</th>
+                                <th class="text-end">差異率（%）</th>
+                                <th class="text-end">達成率（%）</th>
+                            </tr>
+                        </thead>
+                        <tbody id="plComparisonTable">
+                            <!-- JavaScriptで動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <canvas id="plComparisonChart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- 貸借対照表 予算vs実績 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-balance-scale me-2"></i>貸借対照表 予算vs実績</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>項目</th>
+                                <th class="text-end">予算（円）</th>
+                                <th class="text-end">実績（円）</th>
+                                <th class="text-end">差異（円）</th>
+                                <th class="text-end">差異率（%）</th>
+                                <th class="text-end">達成率（%）</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bsComparisonTable">
+                            <!-- JavaScriptで動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <canvas id="bsComparisonChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('decision.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 予算登録・編集モーダル -->
+<div class="modal fade" id="budgetModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="budgetModalTitle">予算登録</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="budgetForm">
+                    <input type="hidden" id="budgetId">
+                    <input type="hidden" id="budgetFiscalYearId">
+                    
+                    <h6 class="mb-3">損益計算書予算</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label for="budgetSales" class="form-label">売上高</label>
+                            <input type="number" class="form-control" id="budgetSales" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetCostOfSales" class="form-label">売上原価</label>
+                            <input type="number" class="form-control" id="budgetCostOfSales" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetOperatingExpenses" class="form-label">販売費及び一般管理費</label>
+                            <input type="number" class="form-control" id="budgetOperatingExpenses" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetOperatingIncome" class="form-label">営業利益</label>
+                            <input type="number" class="form-control" id="budgetOperatingIncome" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetOrdinaryIncome" class="form-label">経常利益</label>
+                            <input type="number" class="form-control" id="budgetOrdinaryIncome" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetNetIncome" class="form-label">当期純利益</label>
+                            <input type="number" class="form-control" id="budgetNetIncome" required>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">貸借対照表予算</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label for="budgetCurrentAssets" class="form-label">流動資産</label>
+                            <input type="number" class="form-control" id="budgetCurrentAssets" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetFixedAssets" class="form-label">固定資産</label>
+                            <input type="number" class="form-control" id="budgetFixedAssets" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetTotalAssets" class="form-label">総資産</label>
+                            <input type="number" class="form-control" id="budgetTotalAssets" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetCurrentLiabilities" class="form-label">流動負債</label>
+                            <input type="number" class="form-control" id="budgetCurrentLiabilities" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetFixedLiabilities" class="form-label">固定負債</label>
+                            <input type="number" class="form-control" id="budgetFixedLiabilities" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetTotalLiabilities" class="form-label">総負債</label>
+                            <input type="number" class="form-control" id="budgetTotalLiabilities" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="budgetTotalEquity" class="form-label">純資産</label>
+                            <input type="number" class="form-control" id="budgetTotalEquity" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label for="budgetNotes" class="form-label">備考</label>
+                            <textarea class="form-control" id="budgetNotes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="saveBudgetBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let currentFiscalYearId = null;
+let currentBudgetData = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('companySelect').addEventListener('change', function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscalYearSelect');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">企業を選択してください</option>';
+        return;
+    }
+    
+    fetch(`/decision/fiscal-years/by-company/${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
+            data.forEach(fy => {
+                const option = document.createElement('option');
+                option.value = fy.id;
+                option.textContent = fy.year_name;
+                fiscalYearSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('会計年度の取得に失敗しました。');
+        });
+});
+
+// 分析実行
+document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fiscalYearId = document.getElementById('fiscalYearSelect').value;
+    
+    if (!fiscalYearId) {
+        alert('会計年度を選択してください。');
+        return;
+    }
+    
+    currentFiscalYearId = fiscalYearId;
+    
+    // 予算vs実績分析を実行
+    fetch(`/decision/budget/analyze?fiscal_year_id=${fiscalYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            currentBudgetData = data;
+            
+            // 予算アクションボタンを表示
+            document.getElementById('budgetActions').style.display = 'block';
+            
+            if (data.has_budget) {
+                document.getElementById('editBudgetBtn').style.display = 'inline-block';
+                document.getElementById('createBudgetBtn').style.display = 'none';
+                
+                // 分析結果を表示
+                displayAnalysisResults(data);
+            } else {
+                document.getElementById('editBudgetBtn').style.display = 'none';
+                document.getElementById('createBudgetBtn').style.display = 'inline-block';
+                document.getElementById('analysisResults').style.display = 'none';
+                alert('予算が登録されていません。予算を登録してください。');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('分析の実行に失敗しました。');
+        });
+});
+
+function displayAnalysisResults(data) {
+    // 予算達成度サマリーを表示
+    const summary = data.summary;
+    document.getElementById('overallAchievement').textContent = summary.overall_achievement.toFixed(2) + '%';
+    document.getElementById('salesAchievement').textContent = summary.sales_achievement.toFixed(2) + '%';
+    document.getElementById('operatingIncomeAchievement').textContent = summary.operating_income_achievement.toFixed(2) + '%';
+    document.getElementById('netIncomeAchievement').textContent = summary.net_income_achievement.toFixed(2) + '%';
+    
+    const evaluationBadge = document.getElementById('evaluationBadge');
+    evaluationBadge.textContent = summary.evaluation;
+    evaluationBadge.className = `badge bg-${summary.evaluation_color}`;
+    
+    const summaryHeader = document.getElementById('summaryHeader');
+    summaryHeader.className = `card-header bg-${summary.evaluation_color} text-white`;
+    
+    // 損益計算書テーブルを表示
+    const plTable = document.getElementById('plComparisonTable');
+    plTable.innerHTML = '';
+    
+    Object.entries(data.pl).forEach(([key, item]) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.label}</td>
+            <td class="text-end">${item.budget.toLocaleString()}</td>
+            <td class="text-end">${item.actual.toLocaleString()}</td>
+            <td class="text-end ${item.variance >= 0 ? 'text-success' : 'text-danger'}">${item.variance.toLocaleString()}</td>
+            <td class="text-end ${item.variance_rate >= 0 ? 'text-success' : 'text-danger'}">${item.variance_rate.toFixed(2)}</td>
+            <td class="text-end ${item.achievement_rate >= 100 ? 'text-success' : 'text-warning'}">${item.achievement_rate.toFixed(2)}</td>
+        `;
+        plTable.appendChild(row);
+    });
+    
+    // 貸借対照表テーブルを表示
+    const bsTable = document.getElementById('bsComparisonTable');
+    bsTable.innerHTML = '';
+    
+    Object.entries(data.bs).forEach(([key, item]) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.label}</td>
+            <td class="text-end">${item.budget.toLocaleString()}</td>
+            <td class="text-end">${item.actual.toLocaleString()}</td>
+            <td class="text-end ${item.variance >= 0 ? 'text-success' : 'text-danger'}">${item.variance.toLocaleString()}</td>
+            <td class="text-end ${item.variance_rate >= 0 ? 'text-success' : 'text-danger'}">${item.variance_rate.toFixed(2)}</td>
+            <td class="text-end ${item.achievement_rate >= 100 ? 'text-success' : 'text-warning'}">${item.achievement_rate.toFixed(2)}</td>
+        `;
+        bsTable.appendChild(row);
+    });
+    
+    // 分析結果エリアを表示
+    document.getElementById('analysisResults').style.display = 'block';
+    
+    // グラフを描画
+    drawCharts(data);
+}
+
+function drawCharts(data) {
+    // 損益計算書グラフ
+    const plLabels = [];
+    const plBudget = [];
+    const plActual = [];
+    
+    Object.entries(data.pl).forEach(([key, item]) => {
+        plLabels.push(item.label);
+        plBudget.push(item.budget);
+        plActual.push(item.actual);
+    });
+    
+    const plCtx = document.getElementById('plComparisonChart').getContext('2d');
+    new Chart(plCtx, {
+        type: 'bar',
+        data: {
+            labels: plLabels,
+            datasets: [
+                {
+                    label: '予算',
+                    data: plBudget,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: '実績',
+                    data: plActual,
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // 貸借対照表グラフ
+    const bsLabels = [];
+    const bsBudget = [];
+    const bsActual = [];
+    
+    Object.entries(data.bs).forEach(([key, item]) => {
+        bsLabels.push(item.label);
+        bsBudget.push(item.budget);
+        bsActual.push(item.actual);
+    });
+    
+    const bsCtx = document.getElementById('bsComparisonChart').getContext('2d');
+    new Chart(bsCtx, {
+        type: 'bar',
+        data: {
+            labels: bsLabels,
+            datasets: [
+                {
+                    label: '予算',
+                    data: bsBudget,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: '実績',
+                    data: bsActual,
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// 予算登録ボタン
+document.getElementById('createBudgetBtn').addEventListener('click', function() {
+    document.getElementById('budgetModalTitle').textContent = '予算登録';
+    document.getElementById('budgetForm').reset();
+    document.getElementById('budgetId').value = '';
+    document.getElementById('budgetFiscalYearId').value = currentFiscalYearId;
+    
+    const modal = new bootstrap.Modal(document.getElementById('budgetModal'));
+    modal.show();
+});
+
+// 予算編集ボタン
+document.getElementById('editBudgetBtn').addEventListener('click', function() {
+    if (!currentBudgetData || !currentBudgetData.budget) {
+        alert('予算データが見つかりません。');
+        return;
+    }
+    
+    const budget = currentBudgetData.budget;
+    
+    document.getElementById('budgetModalTitle').textContent = '予算編集';
+    document.getElementById('budgetId').value = budget.id;
+    document.getElementById('budgetFiscalYearId').value = currentFiscalYearId;
+    
+    // フォームに値を設定
+    document.getElementById('budgetSales').value = budget.budget_sales || '';
+    document.getElementById('budgetCostOfSales').value = budget.budget_cost_of_sales || '';
+    document.getElementById('budgetOperatingExpenses').value = budget.budget_operating_expenses || '';
+    document.getElementById('budgetOperatingIncome').value = budget.budget_operating_income || '';
+    document.getElementById('budgetOrdinaryIncome').value = budget.budget_ordinary_income || '';
+    document.getElementById('budgetNetIncome').value = budget.budget_net_income || '';
+    document.getElementById('budgetCurrentAssets').value = budget.budget_current_assets || '';
+    document.getElementById('budgetFixedAssets').value = budget.budget_fixed_assets || '';
+    document.getElementById('budgetTotalAssets').value = budget.budget_total_assets || '';
+    document.getElementById('budgetCurrentLiabilities').value = budget.budget_current_liabilities || '';
+    document.getElementById('budgetFixedLiabilities').value = budget.budget_fixed_liabilities || '';
+    document.getElementById('budgetTotalLiabilities').value = budget.budget_total_liabilities || '';
+    document.getElementById('budgetTotalEquity').value = budget.budget_total_equity || '';
+    document.getElementById('budgetNotes').value = budget.notes || '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('budgetModal'));
+    modal.show();
+});
+
+// 予算保存
+document.getElementById('saveBudgetBtn').addEventListener('click', function() {
+    const budgetId = document.getElementById('budgetId').value;
+    const fiscalYearId = document.getElementById('budgetFiscalYearId').value;
+    
+    const budgetData = {
+        fiscal_year_id: fiscalYearId,
+        budget_sales: parseFloat(document.getElementById('budgetSales').value),
+        budget_cost_of_sales: parseFloat(document.getElementById('budgetCostOfSales').value),
+        budget_operating_expenses: parseFloat(document.getElementById('budgetOperatingExpenses').value),
+        budget_operating_income: parseFloat(document.getElementById('budgetOperatingIncome').value),
+        budget_ordinary_income: parseFloat(document.getElementById('budgetOrdinaryIncome').value),
+        budget_net_income: parseFloat(document.getElementById('budgetNetIncome').value),
+        budget_current_assets: parseFloat(document.getElementById('budgetCurrentAssets').value),
+        budget_fixed_assets: parseFloat(document.getElementById('budgetFixedAssets').value),
+        budget_total_assets: parseFloat(document.getElementById('budgetTotalAssets').value),
+        budget_current_liabilities: parseFloat(document.getElementById('budgetCurrentLiabilities').value),
+        budget_fixed_liabilities: parseFloat(document.getElementById('budgetFixedLiabilities').value),
+        budget_total_liabilities: parseFloat(document.getElementById('budgetTotalLiabilities').value),
+        budget_total_equity: parseFloat(document.getElementById('budgetTotalEquity').value),
+        notes: document.getElementById('budgetNotes').value
+    };
+    
+    const url = budgetId ? `/decision/budget/${budgetId}` : '/decision/budget';
+    const method = budgetId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(budgetData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        alert('予算を保存しました。');
+        bootstrap.Modal.getInstance(document.getElementById('budgetModal')).hide();
+        
+        // 分析を再実行
+        document.getElementById('analysisForm').dispatchEvent(new Event('submit'));
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('予算の保存に失敗しました。');
+    });
+});
+</script>
+{% endblock %}
