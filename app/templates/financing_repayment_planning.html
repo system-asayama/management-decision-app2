@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+
+{% block title %}資金調達返済計画{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-hand-holding-usd me-2"></i>資金調達返済計画</h2>
+    <p class="text-muted">借入金の調達と返済計画を管理します。</p>
+    
+    <!-- タブナビゲーション -->
+    <ul class="nav nav-tabs mt-4" id="financingTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="plan-tab" data-bs-toggle="tab" data-bs-target="#plan" type="button">
+                資金調達計画
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button">
+                返済スケジュール
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="refinance-tab" data-bs-toggle="tab" data-bs-target="#refinance" type="button">
+                借り換え分析
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="financingTabContent">
+        <!-- 資金調達計画タブ -->
+        <div class="tab-pane fade show active" id="plan" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">資金調達計画条件</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="required_funds" class="form-label">必要資金額（円）</label>
+                                <input type="number" class="form-control" id="required_funds" value="50000000" min="0" step="1000000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="equity_ratio" class="form-label">自己資本比率（%）</label>
+                                <input type="number" class="form-control" id="equity_ratio" value="30" min="0" max="100" step="1">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="loan_interest_rate" class="form-label">借入金利率（%）</label>
+                                <input type="number" class="form-control" id="loan_interest_rate" value="2.5" min="0" step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="loan_term_years" class="form-label">返済期間（年）</label>
+                                <input type="number" class="form-control" id="loan_term_years" value="10" min="1" step="1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="payment_frequency" class="form-label">返済頻度</label>
+                                <select class="form-select" id="payment_frequency">
+                                    <option value="monthly" selected>月次</option>
+                                    <option value="quarterly">四半期</option>
+                                    <option value="annually">年次</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="calculateFinancingPlan()">
+                        <i class="fas fa-calculator me-2"></i>計算実行
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 計算結果 -->
+            <div id="plan_results" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">資金調達計画結果</h5>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">必要資金額</h6>
+                                        <h4 id="display_required_funds">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h6>自己資金</h6>
+                                        <h4 id="equity_amount">-</h4>
+                                        <p class="mb-0" id="equity_ratio_display">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h6>借入金</h6>
+                                        <h4 id="loan_amount">-</h4>
+                                        <p class="mb-0" id="loan_ratio_display">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center">
+                                        <h6>期間返済額</h6>
+                                        <h4 id="payment_per_period">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>返済計画サマリー</h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <tbody id="plan_summary">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <canvas id="financing_chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 返済スケジュールタブ -->
+        <div class="tab-pane fade" id="schedule" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">返済スケジュール条件</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="schedule_principal" class="form-label">借入元金（円）</label>
+                                <input type="number" class="form-control" id="schedule_principal" value="35000000" min="0" step="1000000">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="schedule_interest_rate" class="form-label">年利率（%）</label>
+                                <input type="number" class="form-control" id="schedule_interest_rate" value="2.5" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="schedule_term_years" class="form-label">返済期間（年）</label>
+                                <input type="number" class="form-control" id="schedule_term_years" value="10" min="1" step="1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="generateSchedule()">
+                        <i class="fas fa-calendar-alt me-2"></i>スケジュール生成
+                    </button>
+                </div>
+            </div>
+            
+            <!-- スケジュール結果 -->
+            <div id="schedule_results" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">返済スケジュール</h5>
+                        
+                        <div class="table-responsive mt-3" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped table-sm">
+                                <thead class="sticky-top bg-white">
+                                    <tr>
+                                        <th>期</th>
+                                        <th>返済額</th>
+                                        <th>元金返済</th>
+                                        <th>利息</th>
+                                        <th>残高</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedule_table">
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <canvas id="schedule_chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 借り換え分析タブ -->
+        <div class="tab-pane fade" id="refinance" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">借り換え分析条件</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">現在の借入条件</h6>
+                            <div class="mb-3">
+                                <label for="current_balance" class="form-label">現在の借入残高（円）</label>
+                                <input type="number" class="form-control" id="current_balance" value="30000000" min="0" step="1000000">
+                            </div>
+                            <div class="mb-3">
+                                <label for="current_interest_rate" class="form-label">現在の金利（%）</label>
+                                <input type="number" class="form-control" id="current_interest_rate" value="3.0" min="0" step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="remaining_term" class="form-label">残存期間（年）</label>
+                                <input type="number" class="form-control" id="remaining_term" value="8" min="1" step="1">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-muted">借り換え後の条件</h6>
+                            <div class="mb-3">
+                                <label for="new_interest_rate" class="form-label">新金利（%）</label>
+                                <input type="number" class="form-control" id="new_interest_rate" value="2.0" min="0" step="0.1">
+                            </div>
+                            <div class="mb-3">
+                                <label for="refinancing_cost" class="form-label">借り換え費用（円）</label>
+                                <input type="number" class="form-control" id="refinancing_cost" value="500000" min="0" step="100000">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="analyzeRefinancing()">
+                        <i class="fas fa-exchange-alt me-2"></i>借り換え分析
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 借り換え分析結果 -->
+            <div id="refinance_results" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">借り換え分析結果</h5>
+                        
+                        <div class="alert alert-info" id="refinance_recommendation">
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted">利息削減額</h6>
+                                        <h4 id="interest_savings">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h6>借り換え費用</h6>
+                                        <h4 id="display_refinancing_cost">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h6>実質削減額</h6>
+                                        <h4 id="net_savings">-</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>返済額比較</h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>項目</th>
+                                            <th>現在</th>
+                                            <th>借り換え後</th>
+                                            <th>差額</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="refinance_comparison">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let financingChart = null;
+let scheduleChart = null;
+
+async function calculateFinancingPlan() {
+    const data = {
+        required_funds: parseFloat(document.getElementById('required_funds').value),
+        equity_ratio: parseFloat(document.getElementById('equity_ratio').value),
+        loan_interest_rate: parseFloat(document.getElementById('loan_interest_rate').value),
+        loan_term_years: parseInt(document.getElementById('loan_term_years').value),
+        payment_frequency: document.getElementById('payment_frequency').value
+    };
+    
+    try {
+        const response = await fetch('/decision/financing-repayment/plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayFinancingPlanResults(result);
+    } catch (error) {
+        console.error('計算に失敗しました:', error);
+        alert('計算に失敗しました');
+    }
+}
+
+async function generateSchedule() {
+    const data = {
+        principal: parseFloat(document.getElementById('schedule_principal').value),
+        annual_interest_rate: parseFloat(document.getElementById('schedule_interest_rate').value),
+        term_years: parseInt(document.getElementById('schedule_term_years').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/financing-repayment/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayScheduleResults(result);
+    } catch (error) {
+        console.error('生成に失敗しました:', error);
+        alert('生成に失敗しました');
+    }
+}
+
+async function analyzeRefinancing() {
+    const data = {
+        current_loan_balance: parseFloat(document.getElementById('current_balance').value),
+        current_interest_rate: parseFloat(document.getElementById('current_interest_rate').value),
+        remaining_term_years: parseInt(document.getElementById('remaining_term').value),
+        new_interest_rate: parseFloat(document.getElementById('new_interest_rate').value),
+        refinancing_cost: parseFloat(document.getElementById('refinancing_cost').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/financing-repayment/refinance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayRefinancingResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+function displayFinancingPlanResults(data) {
+    document.getElementById('display_required_funds').textContent = formatNumber(data.required_funds) + '円';
+    document.getElementById('equity_amount').textContent = formatNumber(data.equity) + '円';
+    document.getElementById('equity_ratio_display').textContent = data.equity_ratio.toFixed(1) + '%';
+    document.getElementById('loan_amount').textContent = formatNumber(data.loan) + '円';
+    document.getElementById('loan_ratio_display').textContent = data.loan_ratio.toFixed(1) + '%';
+    document.getElementById('payment_per_period').textContent = formatNumber(data.payment_per_period) + '円';
+    
+    const summaryBody = document.getElementById('plan_summary');
+    summaryBody.innerHTML = `
+        <tr>
+            <th>借入元金</th>
+            <td>${formatNumber(data.loan)}円</td>
+        </tr>
+        <tr>
+            <th>総返済額</th>
+            <td>${formatNumber(data.total_payment)}円</td>
+        </tr>
+        <tr>
+            <th>総利息額</th>
+            <td>${formatNumber(data.total_interest)}円</td>
+        </tr>
+        <tr>
+            <th>返済期間</th>
+            <td>${data.loan_term_years}年（${data.periods}回）</td>
+        </tr>
+    `;
+    
+    displayFinancingChart(data);
+    document.getElementById('plan_results').style.display = 'block';
+    
+    // 返済スケジュールタブの値を更新
+    document.getElementById('schedule_principal').value = data.loan;
+}
+
+function displayFinancingChart(data) {
+    const ctx = document.getElementById('financing_chart').getContext('2d');
+    
+    if (financingChart) {
+        financingChart.destroy();
+    }
+    
+    financingChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['自己資金', '借入金元金', '利息'],
+            datasets: [{
+                data: [data.equity, data.loan, data.total_interest],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(255, 99, 132, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: '資金調達内訳'
+                }
+            }
+        }
+    });
+}
+
+function displayScheduleResults(data) {
+    const tableBody = document.getElementById('schedule_table');
+    tableBody.innerHTML = '';
+    
+    data.schedule.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.period}</td>
+            <td>${formatNumber(row.payment)}円</td>
+            <td>${formatNumber(row.principal_payment)}円</td>
+            <td>${formatNumber(row.interest_payment)}円</td>
+            <td>${formatNumber(row.remaining_balance)}円</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    displayScheduleChart(data.schedule);
+    document.getElementById('schedule_results').style.display = 'block';
+}
+
+function displayScheduleChart(schedule) {
+    const ctx = document.getElementById('schedule_chart').getContext('2d');
+    
+    if (scheduleChart) {
+        scheduleChart.destroy();
+    }
+    
+    const labels = schedule.map(row => row.period);
+    const principalData = schedule.map(row => row.principal_payment);
+    const interestData = schedule.map(row => row.interest_payment);
+    const balanceData = schedule.map(row => row.remaining_balance);
+    
+    scheduleChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '元金返済',
+                    data: principalData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    stack: 'payment'
+                },
+                {
+                    label: '利息',
+                    data: interestData,
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    stack: 'payment'
+                },
+                {
+                    label: '残高',
+                    data: balanceData,
+                    type: 'line',
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: '返済額（円）'
+                    }
+                },
+                y1: {
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: '残高（円）'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function displayRefinancingResults(data) {
+    document.getElementById('refinance_recommendation').textContent = data.recommendation_text;
+    document.getElementById('interest_savings').textContent = formatNumber(data.interest_savings) + '円';
+    document.getElementById('display_refinancing_cost').textContent = formatNumber(data.refinancing_cost) + '円';
+    document.getElementById('net_savings').textContent = formatNumber(data.net_savings) + '円';
+    
+    const comparisonBody = document.getElementById('refinance_comparison');
+    comparisonBody.innerHTML = `
+        <tr>
+            <td>月次返済額</td>
+            <td>${formatNumber(data.current_monthly_payment)}円</td>
+            <td>${formatNumber(data.new_monthly_payment)}円</td>
+            <td class="text-success">${formatNumber(data.monthly_payment_savings)}円</td>
+        </tr>
+        <tr>
+            <td>総利息額</td>
+            <td>${formatNumber(data.current_total_interest)}円</td>
+            <td>${formatNumber(data.new_total_interest)}円</td>
+            <td class="text-success">${formatNumber(data.interest_savings)}円</td>
+        </tr>
+    `;
+    
+    document.getElementById('refinance_results').style.display = 'block';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}

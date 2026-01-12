@@ -2314,3 +2314,101 @@ def working_capital_planning_increase():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# 資金調達返済計画
+# ============================================================
+
+@bp.route('/financing-repayment')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financing_repayment():
+    """資金調達返済計画ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    return render_template('financing_repayment_planning.html')
+
+
+@bp.route('/financing-repayment/plan', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financing_repayment_plan():
+    """資金調達計画を作成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.financing_repayment_planner import plan_financing_repayment
+        
+        result = plan_financing_repayment(
+            required_funds=float(data.get('required_funds', 0)),
+            equity_ratio=float(data.get('equity_ratio', 30)),
+            loan_interest_rate=float(data.get('loan_interest_rate', 2.5)),
+            loan_term_years=int(data.get('loan_term_years', 10)),
+            payment_frequency=data.get('payment_frequency', 'monthly')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/financing-repayment/schedule', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financing_repayment_schedule():
+    """返済スケジュールを生成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.financing_repayment_planner import generate_amortization_schedule
+        
+        schedule = generate_amortization_schedule(
+            principal=float(data.get('principal', 0)),
+            annual_interest_rate=float(data.get('annual_interest_rate', 2.5)),
+            term_years=int(data.get('term_years', 10)),
+            payment_frequency='monthly'
+        )
+        
+        return jsonify({'schedule': schedule})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/financing-repayment/refinance', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def financing_repayment_refinance():
+    """借り換えを分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.financing_repayment_planner import calculate_refinancing_benefit
+        
+        result = calculate_refinancing_benefit(
+            current_loan_balance=float(data.get('current_loan_balance', 0)),
+            current_interest_rate=float(data.get('current_interest_rate', 3.0)),
+            remaining_term_years=int(data.get('remaining_term_years', 8)),
+            new_interest_rate=float(data.get('new_interest_rate', 2.0)),
+            refinancing_cost=float(data.get('refinancing_cost', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
