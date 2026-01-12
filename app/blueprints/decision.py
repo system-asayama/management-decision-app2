@@ -1820,3 +1820,51 @@ def retained_earnings_simulation_simulate():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 貢献度分析
+# ============================================================
+
+@bp.route('/contribution-analysis')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def contribution_analysis():
+    """貢献度分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('contribution_analysis.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/contribution-analysis/analyze', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def contribution_analysis_analyze():
+    """貢献度分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    segments = data.get('segments', [])
+    common_fixed_cost = float(data.get('common_fixed_cost', 0))
+    
+    if not segments:
+        return jsonify({'error': 'セグメント情報を指定してください'}), 400
+    
+    try:
+        from ..utils.contribution_analyzer import analyze_product_mix
+        
+        # 貢献度分析を実行
+        result = analyze_product_mix(segments, common_fixed_cost)
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

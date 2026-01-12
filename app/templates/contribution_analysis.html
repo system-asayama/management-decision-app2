@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}貢献度分析{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-chart-pie me-2"></i>貢献度分析</h2>
+    <p class="text-muted">製品別・部門別の貢献利益を分析し、収益性を評価します。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">分析対象の選択</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="company_select" class="form-label">企業選択</label>
+                        <select class="form-select" id="company_select">
+                            <option value="">企業を選択してください</option>
+                            {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fiscal_year_select" class="form-label">会計年度</label>
+                        <select class="form-select" id="fiscal_year_select" disabled>
+                            <option value="">まず企業を選択してください</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="common_fixed_cost" class="form-label">共通固定費</label>
+                <input type="number" class="form-control" id="common_fixed_cost" value="0" min="0" step="1000">
+                <small class="text-muted">全セグメントに共通する固定費（本社費用等）</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- セグメント入力 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">セグメント情報</h5>
+                <button class="btn btn-primary btn-sm" onclick="addSegment()">
+                    <i class="fas fa-plus me-2"></i>セグメント追加
+                </button>
+            </div>
+            
+            <div id="segments_container">
+                <!-- セグメント入力フォームがここに追加されます -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <button class="btn btn-success" onclick="analyzeContribution()">
+            <i class="fas fa-calculator me-2"></i>分析実行
+        </button>
+    </div>
+    
+    <!-- 分析結果 -->
+    <div id="analysis_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">分析結果</h5>
+                
+                <!-- サマリー -->
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">総売上高</h6>
+                                <h4 id="total_sales">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">総貢献利益</h6>
+                                <h4 id="total_contribution">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">貢献利益率</h6>
+                                <h4 id="contribution_ratio">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>営業利益</h6>
+                                <h4 id="operating_profit">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 詳細テーブル -->
+                <div class="mt-4">
+                    <h6>セグメント別詳細</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>セグメント名</th>
+                                    <th>売上高</th>
+                                    <th>変動費</th>
+                                    <th>貢献利益</th>
+                                    <th>貢献利益率</th>
+                                    <th>直接固定費</th>
+                                    <th>セグメント利益</th>
+                                    <th>売上構成比</th>
+                                    <th>貢献度</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysis_table_body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- グラフ -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <canvas id="sales_chart"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="contribution_chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let segmentCount = 0;
+let salesChart = null;
+let contributionChart = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('company_select').addEventListener('change', async function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscal_year_select');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">まず企業を選択してください</option>';
+        fiscalYearSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/fiscal-years/by-company/${companyId}`);
+        const fiscalYears = await response.json();
+        
+        fiscalYearSelect.innerHTML = '<option value="">会計年度を選択してください</option>';
+        fiscalYears.forEach(fy => {
+            const option = document.createElement('option');
+            option.value = fy.id;
+            option.textContent = fy.year_name;
+            fiscalYearSelect.appendChild(option);
+        });
+        fiscalYearSelect.disabled = false;
+    } catch (error) {
+        console.error('会計年度の取得に失敗しました:', error);
+        alert('会計年度の取得に失敗しました');
+    }
+});
+
+function addSegment() {
+    segmentCount++;
+    const container = document.getElementById('segments_container');
+    
+    const segmentDiv = document.createElement('div');
+    segmentDiv.className = 'card mb-3';
+    segmentDiv.id = `segment_${segmentCount}`;
+    segmentDiv.innerHTML = `
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">セグメント ${segmentCount}</h6>
+                <button class="btn btn-danger btn-sm" onclick="removeSegment(${segmentCount})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">セグメント名</label>
+                        <input type="text" class="form-control segment-name" placeholder="製品A、部門X等">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">売上高</label>
+                        <input type="number" class="form-control segment-sales" value="0" min="0" step="1000">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">変動費</label>
+                        <input type="number" class="form-control segment-variable-cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">直接固定費</label>
+                        <input type="number" class="form-control segment-fixed-cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(segmentDiv);
+}
+
+function removeSegment(id) {
+    const segment = document.getElementById(`segment_${id}`);
+    if (segment) {
+        segment.remove();
+    }
+}
+
+function getSegmentsData() {
+    const segments = [];
+    const container = document.getElementById('segments_container');
+    const segmentCards = container.querySelectorAll('.card');
+    
+    segmentCards.forEach(card => {
+        const name = card.querySelector('.segment-name').value;
+        const sales = parseFloat(card.querySelector('.segment-sales').value) || 0;
+        const variableCost = parseFloat(card.querySelector('.segment-variable-cost').value) || 0;
+        const fixedCost = parseFloat(card.querySelector('.segment-fixed-cost').value) || 0;
+        
+        if (name) {
+            segments.push({
+                name: name,
+                sales: sales,
+                variable_cost: variableCost,
+                direct_fixed_cost: fixedCost
+            });
+        }
+    });
+    
+    return segments;
+}
+
+async function analyzeContribution() {
+    const segments = getSegmentsData();
+    const commonFixedCost = parseFloat(document.getElementById('common_fixed_cost').value) || 0;
+    
+    if (segments.length === 0) {
+        alert('セグメントを追加してください');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/decision/contribution-analysis/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                segments: segments,
+                common_fixed_cost: commonFixedCost
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        displayResults(data);
+    } catch (error) {
+        console.error('分析の実行に失敗しました:', error);
+        alert('分析の実行に失敗しました');
+    }
+}
+
+function displayResults(data) {
+    // サマリーを表示
+    document.getElementById('total_sales').textContent = formatNumber(data.total.sales) + '円';
+    document.getElementById('total_contribution').textContent = formatNumber(data.total.contribution_margin) + '円';
+    document.getElementById('contribution_ratio').textContent = data.total.contribution_margin_ratio.toFixed(1) + '%';
+    document.getElementById('operating_profit').textContent = formatNumber(data.total.operating_profit) + '円';
+    
+    // テーブルを表示
+    const tableBody = document.getElementById('analysis_table_body');
+    tableBody.innerHTML = '';
+    
+    data.segments.forEach(segment => {
+        const tr = document.createElement('tr');
+        const profitClass = segment.segment_profit < 0 ? 'text-danger' : '';
+        tr.innerHTML = `
+            <td><strong>${segment.name}</strong></td>
+            <td>${formatNumber(segment.sales)}円</td>
+            <td>${formatNumber(segment.variable_cost)}円</td>
+            <td>${formatNumber(segment.contribution_margin)}円</td>
+            <td>${segment.contribution_margin_ratio.toFixed(1)}%</td>
+            <td>${formatNumber(segment.direct_fixed_cost)}円</td>
+            <td class="${profitClass}">${formatNumber(segment.segment_profit)}円</td>
+            <td>${segment.sales_ratio.toFixed(1)}%</td>
+            <td>${segment.contribution_ratio.toFixed(1)}%</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    // グラフを表示
+    displayCharts(data.segments);
+    
+    // 結果エリアを表示
+    document.getElementById('analysis_results').style.display = 'block';
+}
+
+function displayCharts(segments) {
+    // 売上構成比グラフ
+    const salesCtx = document.getElementById('sales_chart').getContext('2d');
+    if (salesChart) {
+        salesChart.destroy();
+    }
+    
+    salesChart = new Chart(salesCtx, {
+        type: 'pie',
+        data: {
+            labels: segments.map(s => s.name),
+            datasets: [{
+                label: '売上構成比',
+                data: segments.map(s => s.sales),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '売上構成比'
+                }
+            }
+        }
+    });
+    
+    // 貢献利益構成比グラフ
+    const contributionCtx = document.getElementById('contribution_chart').getContext('2d');
+    if (contributionChart) {
+        contributionChart.destroy();
+    }
+    
+    contributionChart = new Chart(contributionCtx, {
+        type: 'bar',
+        data: {
+            labels: segments.map(s => s.name),
+            datasets: [{
+                label: '貢献利益',
+                data: segments.map(s => s.contribution_margin),
+                backgroundColor: 'rgba(75, 192, 192, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'セグメント別貢献利益'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+
+// 初期セグメントを3つ追加
+for (let i = 0; i < 3; i++) {
+    addSegment();
+}
+</script>
+{% endblock %}
