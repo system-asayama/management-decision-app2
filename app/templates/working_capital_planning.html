@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}主要運転資金計画{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-coins me-2"></i>主要運転資金計画</h2>
+    <p class="text-muted">運転資金の計画と効率性を分析します。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">運転資金計画条件</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="sales" class="form-label">年間売上高（円）</label>
+                        <input type="number" class="form-control" id="sales" value="100000000" min="0" step="1000000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="cost_of_sales" class="form-label">年間売上原価（円）</label>
+                        <input type="number" class="form-control" id="cost_of_sales" value="60000000" min="0" step="1000000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ar_days" class="form-label">売掛金回収日数（日）</label>
+                        <input type="number" class="form-control" id="ar_days" value="45" min="0" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="inventory_days" class="form-label">棚卸資産保有日数（日）</label>
+                        <input type="number" class="form-control" id="inventory_days" value="30" min="0" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="ap_days" class="form-label">買掛金支払日数（日）</label>
+                        <input type="number" class="form-control" id="ap_days" value="30" min="0" step="1">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="calculateWorkingCapital()">
+                <i class="fas fa-calculator me-2"></i>計算実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 計算結果 -->
+    <div id="wc_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">運転資金計画結果</h5>
+                
+                <div class="alert alert-info" id="evaluation">
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>運転資金</h6>
+                                <h4 id="working_capital">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>運転資金回転期間</h6>
+                                <h4 id="wc_period">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h6>運転資金回転率</h6>
+                                <h4 id="wc_turnover">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>日商</h6>
+                                <h4 id="daily_sales">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>運転資金内訳</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>項目</th>
+                                    <th>金額</th>
+                                    <th>回転日数</th>
+                                    <th>回転率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wc_breakdown">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="wc_chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 売上増加に伴う運転資金増加額計算 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">売上増加に伴う運転資金増加額</h5>
+            <p class="text-muted">売上増加時に必要となる運転資金を計算します。</p>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="current_sales" class="form-label">現在の売上高（円）</label>
+                        <input type="number" class="form-control" id="current_sales" value="100000000" min="0" step="1000000">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="planned_sales" class="form-label">計画売上高（円）</label>
+                        <input type="number" class="form-control" id="planned_sales" value="120000000" min="0" step="1000000">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="current_wc" class="form-label">現在の運転資金（円）</label>
+                        <input type="number" class="form-control" id="current_wc" value="0" min="0" step="100000">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="calculateWCIncrease()">
+                <i class="fas fa-chart-line me-2"></i>増加額計算
+            </button>
+        </div>
+    </div>
+    
+    <!-- 増加額計算結果 -->
+    <div id="wc_increase_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">運転資金増加額計算結果</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">売上増加率</h6>
+                                <h4 id="sales_growth_rate">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h6>必要増加額</h6>
+                                <h4 id="required_wc_increase">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">現在の運転資金</h6>
+                                <h4 id="display_current_wc">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>計画時の運転資金</h6>
+                                <h4 id="planned_wc">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let wcChart = null;
+
+async function calculateWorkingCapital() {
+    const data = {
+        sales: parseFloat(document.getElementById('sales').value),
+        cost_of_sales: parseFloat(document.getElementById('cost_of_sales').value),
+        accounts_receivable_days: parseInt(document.getElementById('ar_days').value),
+        inventory_days: parseInt(document.getElementById('inventory_days').value),
+        accounts_payable_days: parseInt(document.getElementById('ap_days').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/working-capital-planning/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayWCResults(result);
+    } catch (error) {
+        console.error('計算に失敗しました:', error);
+        alert('計算に失敗しました');
+    }
+}
+
+async function calculateWCIncrease() {
+    const currentWC = parseFloat(document.getElementById('current_wc').value);
+    
+    if (currentWC === 0) {
+        // 運転資金計画から取得
+        const wcValue = document.getElementById('working_capital').textContent;
+        if (wcValue && wcValue !== '-') {
+            document.getElementById('current_wc').value = wcValue.replace(/[^0-9.-]/g, '');
+        }
+    }
+    
+    const data = {
+        current_sales: parseFloat(document.getElementById('current_sales').value),
+        planned_sales: parseFloat(document.getElementById('planned_sales').value),
+        current_working_capital: parseFloat(document.getElementById('current_wc').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/working-capital-planning/increase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayWCIncreaseResults(result);
+    } catch (error) {
+        console.error('計算に失敗しました:', error);
+        alert('計算に失敗しました');
+    }
+}
+
+function displayWCResults(data) {
+    document.getElementById('evaluation').textContent = data.evaluation;
+    document.getElementById('working_capital').textContent = formatNumber(data.working_capital) + '円';
+    document.getElementById('wc_period').textContent = data.working_capital_period.toFixed(1) + '日';
+    document.getElementById('wc_turnover').textContent = data.working_capital_turnover.toFixed(2) + '回';
+    document.getElementById('daily_sales').textContent = formatNumber(data.daily_sales) + '円';
+    
+    // 内訳テーブルを表示
+    const breakdownBody = document.getElementById('wc_breakdown');
+    breakdownBody.innerHTML = `
+        <tr>
+            <td>売掛金</td>
+            <td>${formatNumber(data.accounts_receivable)}円</td>
+            <td>${data.accounts_receivable_days}日</td>
+            <td>${data.accounts_receivable_turnover.toFixed(2)}回</td>
+        </tr>
+        <tr>
+            <td>棚卸資産</td>
+            <td>${formatNumber(data.inventory)}円</td>
+            <td>${data.inventory_days}日</td>
+            <td>${data.inventory_turnover.toFixed(2)}回</td>
+        </tr>
+        <tr>
+            <td>買掛金</td>
+            <td>${formatNumber(data.accounts_payable)}円</td>
+            <td>${data.accounts_payable_days}日</td>
+            <td>${data.accounts_payable_turnover.toFixed(2)}回</td>
+        </tr>
+        <tr class="table-primary">
+            <td><strong>運転資金</strong></td>
+            <td><strong>${formatNumber(data.working_capital)}円</strong></td>
+            <td><strong>${data.working_capital_period.toFixed(1)}日</strong></td>
+            <td><strong>${data.working_capital_turnover.toFixed(2)}回</strong></td>
+        </tr>
+    `;
+    
+    // グラフを表示
+    displayWCChart(data);
+    
+    document.getElementById('wc_results').style.display = 'block';
+    
+    // 増加額計算の現在の運転資金を更新
+    document.getElementById('current_wc').value = data.working_capital;
+}
+
+function displayWCChart(data) {
+    const ctx = document.getElementById('wc_chart').getContext('2d');
+    
+    if (wcChart) {
+        wcChart.destroy();
+    }
+    
+    wcChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['売掛金', '棚卸資産', '買掛金', '運転資金'],
+            datasets: [{
+                label: '金額（円）',
+                data: [
+                    data.accounts_receivable,
+                    data.inventory,
+                    -data.accounts_payable,
+                    data.working_capital
+                ],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(153, 102, 255, 0.6)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '金額（円）'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function displayWCIncreaseResults(data) {
+    document.getElementById('sales_growth_rate').textContent = data.sales_growth_rate.toFixed(1) + '%';
+    document.getElementById('required_wc_increase').textContent = formatNumber(data.required_wc_increase) + '円';
+    document.getElementById('display_current_wc').textContent = formatNumber(data.current_working_capital) + '円';
+    document.getElementById('planned_wc').textContent = formatNumber(data.planned_working_capital) + '円';
+    
+    document.getElementById('wc_increase_results').style.display = 'block';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}

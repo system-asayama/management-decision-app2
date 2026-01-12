@@ -2245,3 +2245,72 @@ def capital_investment_replacement():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# 主要運転資金計画
+# ============================================================
+
+@bp.route('/working-capital-planning')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def working_capital_planning():
+    """主要運転資金計画ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    return render_template('working_capital_planning.html')
+
+
+@bp.route('/working-capital-planning/calculate', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def working_capital_planning_calculate():
+    """運転資金を計算"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.working_capital_planner import plan_working_capital
+        
+        result = plan_working_capital(
+            sales=float(data.get('sales', 0)),
+            cost_of_sales=float(data.get('cost_of_sales', 0)),
+            accounts_receivable_days=int(data.get('accounts_receivable_days', 30)),
+            inventory_days=int(data.get('inventory_days', 30)),
+            accounts_payable_days=int(data.get('accounts_payable_days', 30))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/working-capital-planning/increase', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def working_capital_planning_increase():
+    """運転資金増加額を計算"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.working_capital_planner import calculate_required_working_capital_increase
+        
+        result = calculate_required_working_capital_increase(
+            current_sales=float(data.get('current_sales', 0)),
+            planned_sales=float(data.get('planned_sales', 0)),
+            current_working_capital=float(data.get('current_working_capital', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
