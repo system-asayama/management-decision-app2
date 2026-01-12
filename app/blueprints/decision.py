@@ -1730,3 +1730,93 @@ def simulate_financing():
     return jsonify({
         'updated_plan': updated_plan
     })
+
+
+
+# ============================================================
+# 内部留保シミュレーション
+# ============================================================
+
+@bp.route('/retained-earnings-simulation')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def retained_earnings_simulation():
+    """内部留保シミュレーションページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('retained_earnings_simulation.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/retained-earnings-simulation/simulate')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def retained_earnings_simulation_simulate():
+    """内部留保シミュレーションを実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    years = request.args.get('years', type=int, default=10)
+    dividend_payout_ratio = request.args.get('dividend_payout_ratio', type=float, default=0.3)
+    growth_rate = request.args.get('growth_rate', type=float, default=0.0)
+    
+    if not company_id or not fiscal_year_id:
+        return jsonify({'error': '企業IDと会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.retained_earnings_simulation import simulate_retained_earnings
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 財務データを取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'error': '財務データが見つかりません'}), 404
+        
+        # シミュレーションを実行
+        result = simulate_retained_earnings(
+            current_net_assets=float(balance_sheet.total_equity),
+            annual_net_income=float(profit_loss.net_income),
+            dividend_payout_ratio=dividend_payout_ratio,
+            years=years,
+            growth_rate=growth_rate
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

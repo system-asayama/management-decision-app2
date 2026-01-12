@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}内部留保シミュレーション{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-piggy-bank me-2"></i>内部留保シミュレーション</h2>
+    <p class="text-muted">配当政策と内部留保の関係をシミュレーションします。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">シミュレーション条件</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="company_select" class="form-label">企業選択</label>
+                        <select class="form-select" id="company_select">
+                            <option value="">企業を選択してください</option>
+                            {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fiscal_year_select" class="form-label">ベース年度</label>
+                        <select class="form-select" id="fiscal_year_select" disabled>
+                            <option value="">まず企業を選択してください</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="simulation_years" class="form-label">シミュレーション年数</label>
+                        <input type="number" class="form-control" id="simulation_years" value="10" min="1" max="20">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="dividend_payout_ratio" class="form-label">配当性向（%）</label>
+                        <input type="number" class="form-control" id="dividend_payout_ratio" value="30" min="0" max="100" step="1">
+                        <small class="text-muted">当期純利益のうち配当として支払う割合</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="profit_growth_rate" class="form-label">利益成長率（%）</label>
+                        <input type="number" class="form-control" id="profit_growth_rate" value="3" min="-20" max="50" step="0.1">
+                        <small class="text-muted">年間の利益成長率</small>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="runSimulation()">
+                <i class="fas fa-play me-2"></i>シミュレーション実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- シミュレーション結果 -->
+    <div id="simulation_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">シミュレーション結果</h5>
+                
+                <!-- サマリー -->
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">初期純資産</h6>
+                                <h4 id="initial_net_assets">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">最終純資産</h6>
+                                <h4 id="final_net_assets">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>累積内部留保</h6>
+                                <h4 id="total_retained_earnings">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>純資産増加率</h6>
+                                <h4 id="net_assets_increase_rate">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 詳細テーブル -->
+                <div class="mt-4">
+                    <h6>年次推移</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>年度</th>
+                                    <th>当期純利益</th>
+                                    <th>配当金</th>
+                                    <th>内部留保額</th>
+                                    <th>純資産</th>
+                                    <th>純資産成長率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simulation_table_body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- グラフ -->
+                <div class="mt-4">
+                    <canvas id="simulation_chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let simulationChart = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('company_select').addEventListener('change', async function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscal_year_select');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">まず企業を選択してください</option>';
+        fiscalYearSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/fiscal-years/by-company/${companyId}`);
+        const fiscalYears = await response.json();
+        
+        fiscalYearSelect.innerHTML = '<option value="">会計年度を選択してください</option>';
+        fiscalYears.forEach(fy => {
+            const option = document.createElement('option');
+            option.value = fy.id;
+            option.textContent = fy.year_name;
+            fiscalYearSelect.appendChild(option);
+        });
+        fiscalYearSelect.disabled = false;
+    } catch (error) {
+        console.error('会計年度の取得に失敗しました:', error);
+        alert('会計年度の取得に失敗しました');
+    }
+});
+
+async function runSimulation() {
+    const companyId = document.getElementById('company_select').value;
+    const fiscalYearId = document.getElementById('fiscal_year_select').value;
+    const simulationYears = parseInt(document.getElementById('simulation_years').value);
+    const dividendPayoutRatio = parseFloat(document.getElementById('dividend_payout_ratio').value) / 100;
+    const profitGrowthRate = parseFloat(document.getElementById('profit_growth_rate').value) / 100;
+    
+    if (!companyId || !fiscalYearId) {
+        alert('企業とベース年度を選択してください');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/decision/retained-earnings-simulation/simulate?company_id=${companyId}&fiscal_year_id=${fiscalYearId}&years=${simulationYears}&dividend_payout_ratio=${dividendPayoutRatio}&growth_rate=${profitGrowthRate}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        displayResults(data);
+    } catch (error) {
+        console.error('シミュレーションの実行に失敗しました:', error);
+        alert('シミュレーションの実行に失敗しました');
+    }
+}
+
+function displayResults(data) {
+    // サマリーを表示
+    document.getElementById('initial_net_assets').textContent = formatNumber(data.summary.initial_net_assets) + '円';
+    document.getElementById('final_net_assets').textContent = formatNumber(data.summary.final_net_assets) + '円';
+    document.getElementById('total_retained_earnings').textContent = formatNumber(data.summary.total_retained_earnings) + '円';
+    document.getElementById('net_assets_increase_rate').textContent = data.summary.net_assets_increase_rate.toFixed(1) + '%';
+    
+    // テーブルを表示
+    const tableBody = document.getElementById('simulation_table_body');
+    tableBody.innerHTML = '';
+    
+    data.simulation_results.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>+${row.year}年後</td>
+            <td>${formatNumber(row.net_income)}円</td>
+            <td>${formatNumber(row.dividend)}円</td>
+            <td>${formatNumber(row.retained_earnings)}円</td>
+            <td>${formatNumber(row.net_assets)}円</td>
+            <td>${row.net_assets_growth_rate.toFixed(1)}%</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    // グラフを表示
+    displayChart(data.simulation_results);
+    
+    // 結果エリアを表示
+    document.getElementById('simulation_results').style.display = 'block';
+}
+
+function displayChart(results) {
+    const ctx = document.getElementById('simulation_chart').getContext('2d');
+    
+    if (simulationChart) {
+        simulationChart.destroy();
+    }
+    
+    simulationChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: results.map(r => `+${r.year}年後`),
+            datasets: [
+                {
+                    label: '純資産',
+                    data: results.map(r => r.net_assets),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: '当期純利益',
+                    data: results.map(r => r.net_income),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: '内部留保額',
+                    data: results.map(r => r.retained_earnings),
+                    borderColor: 'rgb(75, 192, 75)',
+                    backgroundColor: 'rgba(75, 192, 75, 0.2)',
+                    yAxisID: 'y'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: '金額（円）'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}
