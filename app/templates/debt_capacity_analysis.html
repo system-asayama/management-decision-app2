@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}借入金許容限度額分析{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- ヘッダー -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-money-bill-wave me-2"></i>借入金許容限度額分析</h2>
+            <p class="text-muted">企業の借入金許容限度額を分析し、適正な借入金額を算出します。</p>
+        </div>
+    </div>
+
+    <!-- 企業・年度選択フォーム -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="analysisForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="companySelect" class="form-label">企業を選択</label>
+                    <select class="form-select" id="companySelect" required>
+                        <option value="">選択してください</option>
+                        {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="fiscalYearSelect" class="form-label">会計年度を選択</label>
+                    <select class="form-select" id="fiscalYearSelect" required>
+                        <option value="">企業を選択してください</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-chart-bar me-2"></i>分析実行
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 分析結果表示エリア -->
+    <div id="analysisResults" style="display: none;">
+        <!-- 総合評価 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header text-white" id="overallHeader">
+                <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>借入金健全性総合評価</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">総合評価</h6>
+                                <h2 class="card-title" id="overallEvaluation">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">自己資本比率</h6>
+                                <h3 class="card-title text-info" id="equityRatioValue">-</h3>
+                                <p class="mb-0"><span class="badge" id="equityBadge">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">債務償還年数</h6>
+                                <h3 class="card-title text-success" id="debtServiceYearsValue">-</h3>
+                                <p class="mb-0"><span class="badge" id="debtServiceBadge">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-subtitle mb-2 text-muted">ICR</h6>
+                                <h3 class="card-title text-warning" id="icrValue">-</h3>
+                                <p class="mb-0"><span class="badge" id="icrBadge">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 借入金許容限度額 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>借入金許容限度額</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">追加借入可能額（自己資本比率基準）</h6>
+                                <h3 class="card-title text-primary" id="additionalDebtCapacity">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">安全な借入限度額（CF基準）</h6>
+                                <h3 class="card-title text-success" id="safeDebtLimit">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle me-2"></i>最終的な借入許容限度額</h5>
+                            <h2 id="finalDebtCapacity">-</h2>
+                            <p class="mb-0">※自己資本比率基準とキャッシュフロー基準の小さい方を採用</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 現在の財務状況 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>現在の財務状況</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <th>総資産</th>
+                                <td class="text-end" id="totalAssets">-</td>
+                                <th>総負債</th>
+                                <td class="text-end" id="totalLiabilities">-</td>
+                            </tr>
+                            <tr>
+                                <th>純資産</th>
+                                <td class="text-end" id="totalEquity">-</td>
+                                <th>負債比率</th>
+                                <td class="text-end" id="debtRatio">-</td>
+                            </tr>
+                            <tr>
+                                <th>営業利益</th>
+                                <td class="text-end" id="operatingIncome">-</td>
+                                <th>年間キャッシュフロー</th>
+                                <td class="text-end" id="annualCashFlow">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 返済計画シミュレーション -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>返済計画シミュレーション</h5>
+            </div>
+            <div class="card-body">
+                <form id="repaymentForm" class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label for="loanAmount" class="form-label">借入金額（円）</label>
+                        <input type="number" class="form-control" id="loanAmount" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="interestRate" class="form-label">年利率（%）</label>
+                        <input type="number" class="form-control" id="interestRate" step="0.01" value="2.0" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="repaymentYears" class="form-label">返済年数</label>
+                        <input type="number" class="form-control" id="repaymentYears" value="10" required>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-calculator me-2"></i>返済計画を計算
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="repaymentResults" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>年</th>
+                                    <th class="text-end">年間返済額（円）</th>
+                                    <th class="text-end">元金（円）</th>
+                                    <th class="text-end">利息（円）</th>
+                                    <th class="text-end">残高（円）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repaymentTable">
+                                <!-- JavaScriptで動的に生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <canvas id="repaymentChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{{ url_for('decision.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let currentAnalysisData = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('companySelect').addEventListener('change', function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscalYearSelect');
+    
+    if (!companyId) {
+        fiscalYearSelect.innerHTML = '<option value="">企業を選択してください</option>';
+        return;
+    }
+    
+    fetch(`/decision/fiscal-years/by-company/${companyId}`)
+        .then(response => response.json())
+        .then(data => {
+            fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
+            data.forEach(fy => {
+                const option = document.createElement('option');
+                option.value = fy.id;
+                option.textContent = fy.year_name;
+                fiscalYearSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('会計年度の取得に失敗しました。');
+        });
+});
+
+// 分析実行
+document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const fiscalYearId = document.getElementById('fiscalYearSelect').value;
+    
+    if (!fiscalYearId) {
+        alert('会計年度を選択してください。');
+        return;
+    }
+    
+    // 借入金許容限度額分析を実行
+    fetch(`/decision/debt-capacity/analyze?fiscal_year_id=${fiscalYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            currentAnalysisData = data;
+            displayAnalysisResults(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('分析の実行に失敗しました。');
+        });
+});
+
+function displayAnalysisResults(data) {
+    // 総合評価を表示
+    const health = data.health;
+    document.getElementById('overallEvaluation').textContent = health.overall_evaluation;
+    
+    const overallHeader = document.getElementById('overallHeader');
+    overallHeader.className = `card-header bg-${health.overall_color} text-white`;
+    
+    // 自己資本比率
+    document.getElementById('equityRatioValue').textContent = data.capacity.current_equity_ratio.toFixed(2) + '%';
+    const equityBadge = document.getElementById('equityBadge');
+    equityBadge.textContent = health.equity_evaluation;
+    equityBadge.className = `badge bg-${health.equity_color}`;
+    
+    // 債務償還年数
+    const debtServiceYears = data.capacity.debt_service_years;
+    document.getElementById('debtServiceYearsValue').textContent = 
+        debtServiceYears === Infinity ? '∞' : debtServiceYears.toFixed(2) + '年';
+    const debtServiceBadge = document.getElementById('debtServiceBadge');
+    debtServiceBadge.textContent = health.debt_service_evaluation;
+    debtServiceBadge.className = `badge bg-${health.debt_service_color}`;
+    
+    // インタレストカバレッジレシオ
+    const icr = data.capacity.interest_coverage_ratio;
+    document.getElementById('icrValue').textContent = 
+        icr === Infinity ? '∞' : icr.toFixed(2) + '倍';
+    const icrBadge = document.getElementById('icrBadge');
+    icrBadge.textContent = health.icr_evaluation;
+    icrBadge.className = `badge bg-${health.icr_color}`;
+    
+    // 借入金許容限度額
+    document.getElementById('additionalDebtCapacity').textContent = 
+        data.capacity.additional_debt_capacity.toLocaleString() + '円';
+    document.getElementById('safeDebtLimit').textContent = 
+        data.capacity.safe_debt_limit.toLocaleString() + '円';
+    document.getElementById('finalDebtCapacity').textContent = 
+        data.capacity.final_debt_capacity.toLocaleString() + '円';
+    
+    // 現在の財務状況
+    document.getElementById('totalAssets').textContent = 
+        data.capacity.total_assets.toLocaleString() + '円';
+    document.getElementById('totalLiabilities').textContent = 
+        data.capacity.total_liabilities.toLocaleString() + '円';
+    document.getElementById('totalEquity').textContent = 
+        data.capacity.total_equity.toLocaleString() + '円';
+    document.getElementById('debtRatio').textContent = 
+        data.capacity.current_debt_ratio.toFixed(2) + '%';
+    document.getElementById('operatingIncome').textContent = 
+        data.capacity.operating_income.toLocaleString() + '円';
+    document.getElementById('annualCashFlow').textContent = 
+        data.capacity.annual_cash_flow.toLocaleString() + '円';
+    
+    // 返済計画シミュレーションの借入金額に最終的な借入許容限度額を設定
+    document.getElementById('loanAmount').value = Math.floor(data.capacity.final_debt_capacity);
+    
+    // 分析結果エリアを表示
+    document.getElementById('analysisResults').style.display = 'block';
+}
+
+// 返済計画シミュレーション
+document.getElementById('repaymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+    const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const repaymentYears = parseInt(document.getElementById('repaymentYears').value);
+    
+    if (loanAmount <= 0 || repaymentYears <= 0) {
+        alert('借入金額と返済年数を正しく入力してください。');
+        return;
+    }
+    
+    // 返済計画を計算
+    fetch(`/decision/debt-capacity/repayment-plan?loan_amount=${loanAmount}&interest_rate=${interestRate}&repayment_years=${repaymentYears}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            displayRepaymentPlan(data.repayment_plan);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('返済計画の計算に失敗しました。');
+        });
+});
+
+function displayRepaymentPlan(repaymentPlan) {
+    const table = document.getElementById('repaymentTable');
+    table.innerHTML = '';
+    
+    const years = [];
+    const principals = [];
+    const interests = [];
+    const balances = [];
+    
+    repaymentPlan.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.year}年目</td>
+            <td class="text-end">${item.annual_payment.toLocaleString()}</td>
+            <td class="text-end">${item.principal_payment.toLocaleString()}</td>
+            <td class="text-end">${item.interest_payment.toLocaleString()}</td>
+            <td class="text-end">${item.remaining_balance.toLocaleString()}</td>
+        `;
+        table.appendChild(row);
+        
+        years.push(item.year + '年目');
+        principals.push(item.principal_payment);
+        interests.push(item.interest_payment);
+        balances.push(item.remaining_balance);
+    });
+    
+    // 返済計画結果を表示
+    document.getElementById('repaymentResults').style.display = 'block';
+    
+    // グラフを描画
+    const ctx = document.getElementById('repaymentChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: years,
+            datasets: [
+                {
+                    label: '元金',
+                    data: principals,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: '利息',
+                    data: interests,
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1520,3 +1520,137 @@ def budget_update(budget_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 借入金許容限度額分析ルート
+# ============================================================
+
+@bp.route('/debt-capacity')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def debt_capacity_analysis():
+    """借入金許容限度額分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        # テナントの企業一覧を取得
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('debt_capacity_analysis.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/debt-capacity/analyze')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def debt_capacity_analyze():
+    """借入金許容限度額分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.debt_capacity_analysis import calculate_debt_capacity, evaluate_debt_health
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 損益計算書と貸借対照表を取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'error': '財務データが見つかりません'}), 404
+        
+        # 年間キャッシュフローを計算（簡易的に営業利益を使用）
+        annual_cash_flow = float(profit_loss.operating_income or 0)
+        
+        # 支払利息（簡易的に営業外費用の50%と仮定）
+        interest_expense = float(profit_loss.non_operating_expenses or 0) * 0.5
+        
+        # 借入金許容限度額を計算
+        capacity = calculate_debt_capacity(
+            total_assets=float(balance_sheet.total_assets or 0),
+            total_liabilities=float(balance_sheet.total_liabilities or 0),
+            total_equity=float(balance_sheet.total_equity or 0),
+            operating_income=float(profit_loss.operating_income or 0),
+            interest_expense=interest_expense,
+            annual_cash_flow=annual_cash_flow
+        )
+        
+        # 借入金健全性を評価
+        health = evaluate_debt_health(
+            equity_ratio=capacity['current_equity_ratio'],
+            debt_ratio=capacity['current_debt_ratio'],
+            debt_service_years=capacity['debt_service_years'],
+            interest_coverage_ratio=capacity['interest_coverage_ratio']
+        )
+        
+        return jsonify({
+            'capacity': capacity,
+            'health': health
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/debt-capacity/repayment-plan')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def debt_capacity_repayment_plan():
+    """返済計画を計算"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    loan_amount = request.args.get('loan_amount', type=float)
+    interest_rate = request.args.get('interest_rate', type=float)
+    repayment_years = request.args.get('repayment_years', type=int)
+    
+    if not loan_amount or not repayment_years:
+        return jsonify({'error': 'パラメータが不足しています'}), 400
+    
+    try:
+        from ..utils.debt_capacity_analysis import calculate_debt_repayment_plan
+        
+        repayment_plan = calculate_debt_repayment_plan(
+            debt_amount=loan_amount,
+            annual_interest_rate=interest_rate,
+            repayment_years=repayment_years
+        )
+        
+        return jsonify({'repayment_plan': repayment_plan})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
