@@ -263,7 +263,11 @@ def create_app() -> Flask:
 
     @app.errorhandler(500)
     def internal_error(error):
+        import traceback
         from flask import render_template
+        # エラー詳細をログ出力
+        print(f"⚠️ 500エラー発生: {error}")
+        traceback.print_exc()
         return render_template('500.html'), 500
 
     return app
