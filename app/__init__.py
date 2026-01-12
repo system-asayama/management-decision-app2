@@ -166,7 +166,9 @@ def create_app() -> Flask:
         from .blueprints.system_admin import bp as system_admin_bp
         app.register_blueprint(system_admin_bp)
     except Exception as e:
+        import traceback
         print(f"⚠️ system_admin blueprint 登録エラー: {e}")
+        traceback.print_exc()
 
     try:
         from .blueprints.tenant_admin import bp as tenant_admin_bp

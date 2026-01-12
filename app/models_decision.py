@@ -12,34 +12,13 @@ import enum
 from app.db import Base
 
 
-# ==================== ユーザー管理 ====================
-
-class UserRole(enum.Enum):
-    """ユーザーロール"""
-    USER = "user"
-    ADMIN = "admin"
-
-
-class User(Base):
-    """ユーザーテーブル（Manus OAuth認証用）"""
-    __tablename__ = 'users'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    open_id = Column(String(64), unique=True, nullable=False)
-    name = Column(Text)
-    email = Column(String(320))
-    login_method = Column(String(64))
-    role = Column(SQLEnum(UserRole), default=UserRole.USER, nullable=False)
-    created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
-    last_signed_in = Column(DateTime, default=datetime.now, nullable=False)
-
-
 # ==================== 企業・会計年度 ====================
 
 class Company(Base):
     """企業マスタ"""
     __tablename__ = 'companies'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(Integer, nullable=False, index=True)  # テナントID
@@ -68,6 +47,8 @@ class Company(Base):
 class FiscalYear(Base):
     """会計年度テーブル"""
     __tablename__ = 'fiscal_years'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
@@ -99,6 +80,8 @@ class FiscalYear(Base):
 class ProfitLossStatement(Base):
     """損益計算書（簡易版）"""
     __tablename__ = 'profit_loss_statements'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
@@ -137,6 +120,8 @@ class BalanceSheet(Base):
     """貸借対照表（簡易版）"""
     __tablename__ = 'balance_sheets'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     
@@ -167,6 +152,8 @@ class BalanceSheet(Base):
 class RestructuredPL(Base):
     """組換え損益計算書（詳細版）"""
     __tablename__ = 'restructured_pl'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
@@ -209,6 +196,8 @@ class RestructuredBS(Base):
     """組換え貸借対照表（詳細版）"""
     __tablename__ = 'restructured_bs'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     
@@ -242,6 +231,8 @@ class LaborCost(Base):
     """人件費データ"""
     __tablename__ = 'labor_costs'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     employee_count = Column(Integer, default=0, nullable=False)
@@ -260,6 +251,8 @@ class LaborCost(Base):
 class LaborPlan(Base):
     """労務費管理計画（月次）"""
     __tablename__ = 'labor_plans'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
@@ -300,6 +293,8 @@ class FinancialIndicator(Base):
     """財務指標データ"""
     __tablename__ = 'financial_indicators'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     indicator_type = Column(SQLEnum(IndicatorType), nullable=False)
@@ -325,6 +320,8 @@ class BusinessSegment(Base):
     """事業セグメント（貢献度分析用）"""
     __tablename__ = 'business_segments'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     segment_name = Column(String(255), nullable=False)
@@ -345,6 +342,8 @@ class DifferentialAnalysis(Base):
     """差額原価収益分析マスタ"""
     __tablename__ = 'differential_analyses'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     analysis_name = Column(String(255), nullable=False)
@@ -360,6 +359,8 @@ class DifferentialAnalysis(Base):
 class DifferentialScenario(Base):
     """差額原価収益分析シナリオ"""
     __tablename__ = 'differential_scenarios'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     analysis_id = Column(Integer, ForeignKey('differential_analyses.id'), nullable=False)
@@ -380,6 +381,8 @@ class DifferentialScenario(Base):
 class Budget(Base):
     """予算管理（月次）"""
     __tablename__ = 'budgets'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
@@ -405,6 +408,8 @@ class Budget(Base):
 class CashFlowPlan(Base):
     """資金繰り計画（月次）"""
     __tablename__ = 'cash_flow_plans'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
@@ -464,6 +469,8 @@ class CapitalInvestmentPlan(Base):
     """設備投資計画"""
     __tablename__ = 'capital_investment_plans'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
     investment_name = Column(String(255), nullable=False)
@@ -499,6 +506,8 @@ class Loan(Base):
     """借入金マスタ"""
     __tablename__ = 'loans'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     loan_name = Column(String(255), nullable=False)
@@ -523,6 +532,8 @@ class LoanRepayment(Base):
     """返済実績"""
     __tablename__ = 'loan_repayments'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     loan_id = Column(Integer, ForeignKey('loans.id'), nullable=False)
     repayment_date = Column(DateTime, nullable=False)
@@ -544,6 +555,8 @@ class Simulation(Base):
     """シミュレーション"""
     __tablename__ = 'simulations'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     simulation_name = Column(String(255), nullable=False)
@@ -560,6 +573,8 @@ class Simulation(Base):
 class SimulationResult(Base):
     """シミュレーション結果"""
     __tablename__ = 'simulation_results'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     simulation_id = Column(Integer, ForeignKey('simulations.id'), nullable=False)
@@ -594,6 +609,8 @@ class Notification(Base):
     """通知"""
     __tablename__ = 'notifications'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     type = Column(SQLEnum(NotificationType), nullable=False)
@@ -619,6 +636,8 @@ class AccountMapping(Base):
     """勘定科目マッピング（財務諸表組換え用）"""
     __tablename__ = 'account_mappings'
     
+    __table_args__ = {'extend_existing': True}
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=False)
     source_account = Column(String(255), nullable=False)  # 元の勘定科目名
@@ -637,6 +656,8 @@ class AccountMapping(Base):
 class Budget(Base):
     """予算テーブル"""
     __tablename__ = 'budgets'
+    
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     fiscal_year_id = Column(Integer, ForeignKey('fiscal_years.id'), nullable=False)
