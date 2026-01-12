@@ -2172,3 +2172,76 @@ def labor_cost_planning_analyze():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
+# 設備投資計画
+# ============================================================
+
+@bp.route('/capital-investment')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def capital_investment():
+    """設備投資計画ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    return render_template('capital_investment_planning.html')
+
+
+@bp.route('/capital-investment/evaluate', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def capital_investment_evaluate():
+    """投資案件を評価"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.capital_investment_planner import evaluate_investment
+        
+        result = evaluate_investment(
+            initial_investment=float(data.get('initial_investment', 0)),
+            annual_cash_flows=[float(cf) for cf in data.get('annual_cash_flows', [])],
+            discount_rate=float(data.get('discount_rate', 5)),
+            project_name=data.get('project_name', '投資案件')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/capital-investment/replacement', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def capital_investment_replacement():
+    """設備更新を評価"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.capital_investment_planner import calculate_equipment_replacement
+        
+        result = calculate_equipment_replacement(
+            old_equipment_book_value=float(data.get('old_equipment_book_value', 0)),
+            old_equipment_salvage_value=float(data.get('old_equipment_salvage_value', 0)),
+            old_equipment_annual_cost=float(data.get('old_equipment_annual_cost', 0)),
+            new_equipment_cost=float(data.get('new_equipment_cost', 0)),
+            new_equipment_salvage_value=float(data.get('new_equipment_salvage_value', 0)),
+            new_equipment_annual_cost=float(data.get('new_equipment_annual_cost', 0)),
+            useful_life=int(data.get('useful_life', 10)),
+            discount_rate=float(data.get('discount_rate', 5))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

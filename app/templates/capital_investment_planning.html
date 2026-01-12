@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}設備投資計画{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-industry me-2"></i>設備投資計画</h2>
+    <p class="text-muted">設備投資の経済性評価を行います。</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">投資案件情報</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="project_name" class="form-label">案件名</label>
+                        <input type="text" class="form-control" id="project_name" value="設備投資案件A">
+                    </div>
+                    <div class="mb-3">
+                        <label for="initial_investment" class="form-label">初期投資額（円）</label>
+                        <input type="number" class="form-control" id="initial_investment" value="10000000" min="0" step="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="discount_rate" class="form-label">割引率（%）</label>
+                        <input type="number" class="form-control" id="discount_rate" value="5" min="0" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="project_years" class="form-label">投資期間（年）</label>
+                        <input type="number" class="form-control" id="project_years" value="5" min="1" max="20" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">年次キャッシュフロー（円）</label>
+                        <div id="cash_flow_inputs">
+                            <!-- 動的に生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="evaluateInvestment()">
+                <i class="fas fa-calculator me-2"></i>評価実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 評価結果 -->
+    <div id="evaluation_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">投資評価結果</h5>
+                
+                <div class="alert alert-info" id="recommendation">
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>正味現在価値（NPV）</h6>
+                                <h4 id="npv_value">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>内部収益率（IRR）</h6>
+                                <h4 id="irr_value">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h6>回収期間</h6>
+                                <h4 id="payback_period">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h6>収益性指数（PI）</h6>
+                                <h4 id="profitability_index">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>キャッシュフロー分析</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>年度</th>
+                                    <th>キャッシュフロー</th>
+                                    <th>累計キャッシュフロー</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cash_flow_table">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <canvas id="cash_flow_chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 設備更新分析 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">設備更新分析</h5>
+            <p class="text-muted">旧設備と新設備を比較し、更新の経済性を評価します。</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted">旧設備</h6>
+                    <div class="mb-3">
+                        <label for="old_book_value" class="form-label">帳簿価額（円）</label>
+                        <input type="number" class="form-control" id="old_book_value" value="5000000" min="0" step="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="old_salvage_value" class="form-label">売却価額（円）</label>
+                        <input type="number" class="form-control" id="old_salvage_value" value="1000000" min="0" step="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="old_annual_cost" class="form-label">年間運転費用（円）</label>
+                        <input type="number" class="form-control" id="old_annual_cost" value="3000000" min="0" step="100000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="text-muted">新設備</h6>
+                    <div class="mb-3">
+                        <label for="new_cost" class="form-label">取得価額（円）</label>
+                        <input type="number" class="form-control" id="new_cost" value="15000000" min="0" step="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_salvage_value" class="form-label">残存価額（円）</label>
+                        <input type="number" class="form-control" id="new_salvage_value" value="2000000" min="0" step="100000">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_annual_cost" class="form-label">年間運転費用（円）</label>
+                        <input type="number" class="form-control" id="new_annual_cost" value="1500000" min="0" step="100000">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="replacement_useful_life" class="form-label">耐用年数（年）</label>
+                        <input type="number" class="form-control" id="replacement_useful_life" value="10" min="1" step="1">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="replacement_discount_rate" class="form-label">割引率（%）</label>
+                        <input type="number" class="form-control" id="replacement_discount_rate" value="5" min="0" step="0.1">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-success" onclick="evaluateReplacement()">
+                <i class="fas fa-sync-alt me-2"></i>更新評価
+            </button>
+        </div>
+    </div>
+    
+    <!-- 更新評価結果 -->
+    <div id="replacement_results" class="mt-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">設備更新評価結果</h5>
+                
+                <div class="alert alert-info" id="replacement_recommendation">
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">初期支出額</h6>
+                                <h4 id="initial_outlay">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h6>年間節約額</h6>
+                                <h4 id="annual_savings">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>NPV</h6>
+                                <h4 id="replacement_npv">-</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>コスト比較</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>項目</th>
+                                    <th>旧設備継続</th>
+                                    <th>新設備導入</th>
+                                </tr>
+                            </thead>
+                            <tbody id="replacement_comparison">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let cashFlowChart = null;
+
+// 投資期間が変更されたときにキャッシュフロー入力欄を更新
+document.getElementById('project_years').addEventListener('change', function() {
+    updateCashFlowInputs();
+});
+
+function updateCashFlowInputs() {
+    const years = parseInt(document.getElementById('project_years').value);
+    const container = document.getElementById('cash_flow_inputs');
+    container.innerHTML = '';
+    
+    for (let i = 1; i <= years; i++) {
+        const div = document.createElement('div');
+        div.className = 'input-group mb-2';
+        div.innerHTML = `
+            <span class="input-group-text">${i}年目</span>
+            <input type="number" class="form-control cash-flow-input" id="cf_year_${i}" value="2500000" min="0" step="100000">
+        `;
+        container.appendChild(div);
+    }
+}
+
+// 初期表示
+updateCashFlowInputs();
+
+async function evaluateInvestment() {
+    const years = parseInt(document.getElementById('project_years').value);
+    const cashFlows = [];
+    
+    for (let i = 1; i <= years; i++) {
+        const cf = parseFloat(document.getElementById(`cf_year_${i}`).value);
+        cashFlows.push(cf);
+    }
+    
+    const data = {
+        project_name: document.getElementById('project_name').value,
+        initial_investment: parseFloat(document.getElementById('initial_investment').value),
+        annual_cash_flows: cashFlows,
+        discount_rate: parseFloat(document.getElementById('discount_rate').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/capital-investment/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayEvaluationResults(result);
+    } catch (error) {
+        console.error('評価に失敗しました:', error);
+        alert('評価に失敗しました');
+    }
+}
+
+async function evaluateReplacement() {
+    const data = {
+        old_equipment_book_value: parseFloat(document.getElementById('old_book_value').value),
+        old_equipment_salvage_value: parseFloat(document.getElementById('old_salvage_value').value),
+        old_equipment_annual_cost: parseFloat(document.getElementById('old_annual_cost').value),
+        new_equipment_cost: parseFloat(document.getElementById('new_cost').value),
+        new_equipment_salvage_value: parseFloat(document.getElementById('new_salvage_value').value),
+        new_equipment_annual_cost: parseFloat(document.getElementById('new_annual_cost').value),
+        useful_life: parseInt(document.getElementById('replacement_useful_life').value),
+        discount_rate: parseFloat(document.getElementById('replacement_discount_rate').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/capital-investment/replacement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayReplacementResults(result);
+    } catch (error) {
+        console.error('評価に失敗しました:', error);
+        alert('評価に失敗しました');
+    }
+}
+
+function displayEvaluationResults(data) {
+    document.getElementById('recommendation').textContent = data.recommendation;
+    document.getElementById('npv_value').textContent = formatNumber(data.npv) + '円';
+    document.getElementById('irr_value').textContent = isNaN(data.irr) ? '計算不可' : data.irr.toFixed(2) + '%';
+    document.getElementById('payback_period').textContent = 
+        data.payback_period === Infinity ? '回収不可' : data.payback_period.toFixed(1) + '年';
+    document.getElementById('profitability_index').textContent = data.profitability_index.toFixed(2);
+    
+    // キャッシュフローテーブルを表示
+    const tableBody = document.getElementById('cash_flow_table');
+    tableBody.innerHTML = '';
+    
+    let cumulative = -data.initial_investment;
+    
+    // 初期投資
+    let tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>0年目（初期投資）</td>
+        <td class="text-danger">${formatNumber(-data.initial_investment)}円</td>
+        <td class="text-danger">${formatNumber(cumulative)}円</td>
+    `;
+    tableBody.appendChild(tr);
+    
+    // 年次キャッシュフロー
+    data.annual_cash_flows.forEach((cf, index) => {
+        cumulative += cf;
+        tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${index + 1}年目</td>
+            <td class="text-success">${formatNumber(cf)}円</td>
+            <td class="${cumulative >= 0 ? 'text-success' : 'text-danger'}">${formatNumber(cumulative)}円</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+    
+    // グラフを表示
+    displayCashFlowChart(data);
+    
+    document.getElementById('evaluation_results').style.display = 'block';
+}
+
+function displayCashFlowChart(data) {
+    const ctx = document.getElementById('cash_flow_chart').getContext('2d');
+    
+    if (cashFlowChart) {
+        cashFlowChart.destroy();
+    }
+    
+    const labels = ['初期投資', ...data.annual_cash_flows.map((_, i) => `${i + 1}年目`)];
+    const cashFlows = [-data.initial_investment, ...data.annual_cash_flows];
+    
+    let cumulative = 0;
+    const cumulativeData = cashFlows.map(cf => {
+        cumulative += cf;
+        return cumulative;
+    });
+    
+    cashFlowChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'キャッシュフロー',
+                    data: cashFlows,
+                    backgroundColor: cashFlows.map(cf => cf >= 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
+                    yAxisID: 'y'
+                },
+                {
+                    label: '累計キャッシュフロー',
+                    data: cumulativeData,
+                    type: 'line',
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    yAxisID: 'y'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '金額（円）'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function displayReplacementResults(data) {
+    document.getElementById('replacement_recommendation').textContent = data.recommendation_text;
+    document.getElementById('initial_outlay').textContent = formatNumber(data.initial_outlay) + '円';
+    document.getElementById('annual_savings').textContent = formatNumber(data.annual_savings) + '円';
+    document.getElementById('replacement_npv').textContent = formatNumber(data.npv) + '円';
+    
+    // 比較テーブルを表示
+    const comparisonBody = document.getElementById('replacement_comparison');
+    comparisonBody.innerHTML = `
+        <tr>
+            <td>年間運転費用</td>
+            <td>${formatNumber(data.old_equipment.annual_cost)}円</td>
+            <td>${formatNumber(data.new_equipment.annual_cost)}円</td>
+        </tr>
+        <tr>
+            <td>総コスト</td>
+            <td>${formatNumber(data.old_equipment.total_cost)}円</td>
+            <td>${formatNumber(data.new_equipment.total_cost)}円</td>
+        </tr>
+        <tr class="table-primary">
+            <td><strong>コスト削減額</strong></td>
+            <td colspan="2" class="text-center"><strong>${formatNumber(data.cost_savings)}円</strong></td>
+        </tr>
+    `;
+    
+    document.getElementById('replacement_results').style.display = 'block';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}
