@@ -1654,3 +1654,79 @@ def debt_capacity_repayment_plan():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+
+# ============================================================
+# 資金繰り計画
+# ============================================================
+
+@bp.route('/cash-flow-planning')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def cash_flow_planning():
+    """資金繰り計画ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    db = SessionLocal()
+    try:
+        companies = db.query(Company).filter(Company.tenant_id == tenant_id).all()
+        return render_template('cash_flow_planning.html', companies=companies)
+    finally:
+        db.close()
+
+
+@bp.route('/cash-flow-planning/generate', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def generate_cash_flow_plan():
+    """資金繰り計画を生成"""
+    from app.utils.cash_flow_planning import generate_annual_cash_flow_plan, calculate_required_financing
+    
+    data = request.json
+    
+    # 年間の資金繰り計画を生成
+    cash_flow_plan = generate_annual_cash_flow_plan(
+        beginning_balance=data['beginning_balance'],
+        monthly_sales_revenue=data['monthly_sales_revenue'],
+        monthly_purchase_payment=data['monthly_purchase_payment'],
+        monthly_personnel_cost=data['monthly_personnel_cost'],
+        monthly_rent=data['monthly_rent'],
+        monthly_utilities=data['monthly_utilities'],
+        monthly_other_expenses=data['monthly_other_expenses'],
+        loan_repayment=data.get('loan_repayment', 0),
+        tax_payment_month=data.get('tax_payment_month'),
+        tax_payment_amount=data.get('tax_payment_amount', 0)
+    )
+    
+    # 資金不足を検出
+    financing_info = calculate_required_financing(
+        cash_flow_plan,
+        minimum_balance=data['minimum_balance']
+    )
+    
+    return jsonify({
+        'cash_flow_plan': cash_flow_plan,
+        'minimum_balance': data['minimum_balance'],
+        **financing_info
+    })
+
+
+@bp.route('/cash-flow-planning/simulate-financing', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def simulate_financing():
+    """資金調達の影響をシミュレーション"""
+    from app.utils.cash_flow_planning import simulate_financing_impact
+    
+    data = request.json
+    
+    updated_plan = simulate_financing_impact(
+        cash_flow_plan=data['cash_flow_plan'],
+        financing_amount=data['financing_amount'],
+        financing_month=data['financing_month'],
+        interest_rate=data['interest_rate']
+    )
+    
+    return jsonify({
+        'updated_plan': updated_plan
+    })

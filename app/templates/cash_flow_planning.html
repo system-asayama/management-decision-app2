@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}資金繰り計画 - 経営意思決定支援システム{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="fas fa-money-bill-wave text-success"></i> 資金繰り計画</h1>
+    <p class="lead">月次の資金収支を予測し、資金不足を事前に把握します。</p>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">計画条件入力</h5>
+            <form id="cashFlowForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="companySelect" class="form-label">企業選択</label>
+                        <select class="form-select" id="companySelect" required>
+                            <option value="">企業を選択してください</option>
+                            {% for company in companies %}
+                            <option value="{{ company.id }}">{{ company.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="fiscalYearSelect" class="form-label">会計年度</label>
+                        <select class="form-select" id="fiscalYearSelect" required>
+                            <option value="">会計年度を選択してください</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="beginningBalance" class="form-label">期首残高（円）</label>
+                        <input type="number" class="form-control" id="beginningBalance" value="10000000" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="minimumBalance" class="form-label">最低必要残高（円）</label>
+                        <input type="number" class="form-control" id="minimumBalance" value="1000000" required>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">月次固定費</h6>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="personnelCost" class="form-label">人件費（円）</label>
+                        <input type="number" class="form-control" id="personnelCost" value="3000000" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="rent" class="form-label">賃借料（円）</label>
+                        <input type="number" class="form-control" id="rent" value="500000" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="utilities" class="form-label">水道光熱費（円）</label>
+                        <input type="number" class="form-control" id="utilities" value="200000" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="otherExpenses" class="form-label">その他経費（円）</label>
+                        <input type="number" class="form-control" id="otherExpenses" value="500000" required>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="loanRepayment" class="form-label">月次借入金返済額（円）</label>
+                        <input type="number" class="form-control" id="loanRepayment" value="0">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="taxPaymentMonth" class="form-label">税金支払月</label>
+                        <select class="form-select" id="taxPaymentMonth">
+                            <option value="">なし</option>
+                            {% for month in range(1, 13) %}
+                            <option value="{{ month }}">{{ month }}月</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="taxPaymentAmount" class="form-label">税金支払額（円）</label>
+                        <input type="number" class="form-control" id="taxPaymentAmount" value="0">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-calculator"></i> 資金繰り計画を作成
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="resultsSection" style="display: none;">
+        <div class="alert alert-info" id="summaryAlert"></div>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">資金繰り計画表</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="cashFlowTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>月</th>
+                                <th>期首残高</th>
+                                <th>収入合計</th>
+                                <th>支出合計</th>
+                                <th>資金収支</th>
+                                <th>期末残高</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">資金収支推移グラフ</h5>
+                <canvas id="cashFlowChart"></canvas>
+            </div>
+        </div>
+        
+        <div id="shortageSection" style="display: none;">
+            <div class="alert alert-danger">
+                <h5><i class="fas fa-exclamation-triangle"></i> 資金不足警告</h5>
+                <p id="shortageMessage"></p>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">資金調達シミュレーション</h5>
+                    <form id="financingForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="financingAmount" class="form-label">調達額（円）</label>
+                                <input type="number" class="form-control" id="financingAmount" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="financingMonth" class="form-label">調達月</label>
+                                <select class="form-select" id="financingMonth" required>
+                                    {% for month in range(1, 13) %}
+                                    <option value="{{ month }}">{{ month }}月</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="interestRate" class="form-label">年利率（%）</label>
+                                <input type="number" step="0.1" class="form-control" id="interestRate" value="2.0" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-chart-line"></i> 資金調達の影響をシミュレーション
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <a href="{{ url_for('decision.decision_index') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> メニューに戻る
+    </a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let cashFlowChart = null;
+let currentCashFlowPlan = null;
+
+// 企業選択時に会計年度を取得
+document.getElementById('companySelect').addEventListener('change', async function() {
+    const companyId = this.value;
+    const fiscalYearSelect = document.getElementById('fiscalYearSelect');
+    
+    fiscalYearSelect.innerHTML = '<option value="">会計年度を選択してください</option>';
+    
+    if (!companyId) return;
+    
+    try {
+        const response = await fetch(`/decision/fiscal-years/by-company/${companyId}`);
+        const fiscalYears = await response.json();
+        
+        fiscalYears.forEach(fy => {
+            const option = document.createElement('option');
+            option.value = fy.id;
+            option.textContent = fy.year_name;
+            fiscalYearSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('会計年度の取得に失敗しました:', error);
+    }
+});
+
+// 資金繰り計画作成フォーム送信
+document.getElementById('cashFlowForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const fiscalYearId = document.getElementById('fiscalYearSelect').value;
+    if (!fiscalYearId) {
+        alert('会計年度を選択してください');
+        return;
+    }
+    
+    // 実際の損益計算書データから売上収入と仕入支払を取得
+    // ここでは簡易的に均等配分
+    const monthlySalesRevenue = Array(12).fill(8333333); // 年間売上を12で割った値
+    const monthlyPurchasePayment = Array(12).fill(5000000); // 年間仕入を12で割った値
+    
+    const data = {
+        beginning_balance: parseFloat(document.getElementById('beginningBalance').value),
+        minimum_balance: parseFloat(document.getElementById('minimumBalance').value),
+        monthly_sales_revenue: monthlySalesRevenue,
+        monthly_purchase_payment: monthlyPurchasePayment,
+        monthly_personnel_cost: parseFloat(document.getElementById('personnelCost').value),
+        monthly_rent: parseFloat(document.getElementById('rent').value),
+        monthly_utilities: parseFloat(document.getElementById('utilities').value),
+        monthly_other_expenses: parseFloat(document.getElementById('otherExpenses').value),
+        loan_repayment: parseFloat(document.getElementById('loanRepayment').value),
+        tax_payment_month: document.getElementById('taxPaymentMonth').value ? parseInt(document.getElementById('taxPaymentMonth').value) : null,
+        tax_payment_amount: parseFloat(document.getElementById('taxPaymentAmount').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/cash-flow-planning/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        currentCashFlowPlan = result.cash_flow_plan;
+        
+        displayCashFlowPlan(result);
+    } catch (error) {
+        console.error('資金繰り計画の作成に失敗しました:', error);
+        alert('資金繰り計画の作成に失敗しました');
+    }
+});
+
+function displayCashFlowPlan(result) {
+    const resultsSection = document.getElementById('resultsSection');
+    const summaryAlert = document.getElementById('summaryAlert');
+    const tbody = document.querySelector('#cashFlowTable tbody');
+    
+    resultsSection.style.display = 'block';
+    
+    // サマリー表示
+    const finalBalance = result.cash_flow_plan[11].ending_balance;
+    summaryAlert.innerHTML = `
+        <strong>期末残高: ${finalBalance.toLocaleString()}円</strong><br>
+        最低必要残高: ${result.minimum_balance.toLocaleString()}円
+    `;
+    
+    // テーブル表示
+    tbody.innerHTML = '';
+    result.cash_flow_plan.forEach(plan => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td>${plan.month}月</td>
+            <td>${plan.beginning_balance.toLocaleString()}円</td>
+            <td>${plan.total_revenue.toLocaleString()}円</td>
+            <td>${plan.total_expenses.toLocaleString()}円</td>
+            <td class="${plan.net_cash_flow >= 0 ? 'text-success' : 'text-danger'}">
+                ${plan.net_cash_flow.toLocaleString()}円
+            </td>
+            <td class="${plan.ending_balance >= result.minimum_balance ? 'text-success' : 'text-danger'}">
+                ${plan.ending_balance.toLocaleString()}円
+            </td>
+        `;
+    });
+    
+    // グラフ表示
+    displayCashFlowChart(result.cash_flow_plan);
+    
+    // 資金不足警告
+    if (result.shortage_months && result.shortage_months.length > 0) {
+        const shortageSection = document.getElementById('shortageSection');
+        const shortageMessage = document.getElementById('shortageMessage');
+        
+        shortageSection.style.display = 'block';
+        
+        const shortageList = result.shortage_months.map(s => 
+            `${s.month}月: 不足額 ${s.shortage_amount.toLocaleString()}円`
+        ).join('<br>');
+        
+        shortageMessage.innerHTML = `
+            以下の月で資金不足が発生します:<br>
+            ${shortageList}<br><br>
+            <strong>必要な資金調達額: ${result.required_financing.toLocaleString()}円</strong>
+        `;
+        
+        // 資金調達額のデフォルト値を設定
+        document.getElementById('financingAmount').value = Math.ceil(result.required_financing);
+        document.getElementById('financingMonth').value = result.shortage_months[0].month;
+    } else {
+        document.getElementById('shortageSection').style.display = 'none';
+    }
+}
+
+function displayCashFlowChart(cashFlowPlan) {
+    const ctx = document.getElementById('cashFlowChart').getContext('2d');
+    
+    if (cashFlowChart) {
+        cashFlowChart.destroy();
+    }
+    
+    cashFlowChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: cashFlowPlan.map(p => `${p.month}月`),
+            datasets: [
+                {
+                    label: '期末残高',
+                    data: cashFlowPlan.map(p => p.ending_balance),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: '資金収支',
+                    data: cashFlowPlan.map(p => p.net_cash_flow),
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '資金収支推移'
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + '円';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 資金調達シミュレーション
+document.getElementById('financingForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!currentCashFlowPlan) {
+        alert('先に資金繰り計画を作成してください');
+        return;
+    }
+    
+    const data = {
+        cash_flow_plan: currentCashFlowPlan,
+        financing_amount: parseFloat(document.getElementById('financingAmount').value),
+        financing_month: parseInt(document.getElementById('financingMonth').value),
+        interest_rate: parseFloat(document.getElementById('interestRate').value) / 100
+    };
+    
+    try {
+        const response = await fetch('/decision/cash-flow-planning/simulate-financing', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        // 更新された資金繰り計画を表示
+        currentCashFlowPlan = result.updated_plan;
+        displayCashFlowChart(result.updated_plan);
+        
+        alert('資金調達後の資金繰り計画を表示しました');
+    } catch (error) {
+        console.error('資金調達シミュレーションに失敗しました:', error);
+        alert('資金調達シミュレーションに失敗しました');
+    }
+});
+</script>
+{% endblock %}
