@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+
+{% block title %}差額原価収益分析{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-balance-scale-right me-2"></i>差額原価収益分析</h2>
+    <p class="text-muted">複数のシナリオを比較し、差額利益を分析します。</p>
+    
+    <!-- 分析タイプ選択 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">分析タイプ選択</h5>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary active" onclick="selectAnalysisType('general')">
+                    一般的な差額分析
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="selectAnalysisType('make_or_buy')">
+                    自製か購入か
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="selectAnalysisType('special_order')">
+                    特別注文の受諾可否
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="selectAnalysisType('continue_or_discontinue')">
+                    事業継続・撤退
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 一般的な差額分析 -->
+    <div id="general_analysis" class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">一般的な差額分析</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">シナリオA</h6>
+                    <div class="mb-3">
+                        <label class="form-label">売上高</label>
+                        <input type="number" class="form-control" id="general_a_sales" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">変動費</label>
+                        <input type="number" class="form-control" id="general_a_variable_cost" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">固定費</label>
+                        <input type="number" class="form-control" id="general_a_fixed_cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="text-success">シナリオB</h6>
+                    <div class="mb-3">
+                        <label class="form-label">売上高</label>
+                        <input type="number" class="form-control" id="general_b_sales" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">変動費</label>
+                        <input type="number" class="form-control" id="general_b_variable_cost" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">固定費</label>
+                        <input type="number" class="form-control" id="general_b_fixed_cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="analyzeGeneral()">
+                <i class="fas fa-calculator me-2"></i>分析実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 自製か購入か分析 -->
+    <div id="make_or_buy_analysis" class="card mt-4" style="display: none;">
+        <div class="card-body">
+            <h5 class="card-title">自製か購入か分析</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">自製時の単位変動費</label>
+                        <input type="number" class="form-control" id="make_variable_cost" value="0" min="0" step="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">自製時の固定費</label>
+                        <input type="number" class="form-control" id="make_fixed_cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">購入時の単価</label>
+                        <input type="number" class="form-control" id="buy_price" value="0" min="0" step="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数量</label>
+                        <input type="number" class="form-control" id="quantity" value="0" min="0" step="1">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="analyzeMakeOrBuy()">
+                <i class="fas fa-calculator me-2"></i>分析実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 特別注文の受諾可否分析 -->
+    <div id="special_order_analysis" class="card mt-4" style="display: none;">
+        <div class="card-body">
+            <h5 class="card-title">特別注文の受諾可否分析</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">通常販売価格</label>
+                        <input type="number" class="form-control" id="regular_price" value="0" min="0" step="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">特別注文価格</label>
+                        <input type="number" class="form-control" id="special_order_price" value="0" min="0" step="10">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">単位変動費</label>
+                        <input type="number" class="form-control" id="special_variable_cost" value="0" min="0" step="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数量</label>
+                        <input type="number" class="form-control" id="special_quantity" value="0" min="0" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">追加固定費</label>
+                        <input type="number" class="form-control" id="additional_fixed_cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="analyzeSpecialOrder()">
+                <i class="fas fa-calculator me-2"></i>分析実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 事業継続・撤退分析 -->
+    <div id="continue_or_discontinue_analysis" class="card mt-4" style="display: none;">
+        <div class="card-body">
+            <h5 class="card-title">事業継続・撤退分析</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">売上高</label>
+                        <input type="number" class="form-control" id="continue_sales" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">変動費</label>
+                        <input type="number" class="form-control" id="continue_variable_cost" value="0" min="0" step="1000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">直接固定費</label>
+                        <input type="number" class="form-control" id="direct_fixed_cost" value="0" min="0" step="1000">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">回避可能固定費</label>
+                        <input type="number" class="form-control" id="avoidable_fixed_cost" value="0" min="0" step="1000">
+                        <small class="text-muted">撤退時に削減できる固定費</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">回避不可能固定費</label>
+                        <input type="number" class="form-control" id="unavoidable_fixed_cost" value="0" min="0" step="1000">
+                        <small class="text-muted">撤退後も残る固定費</small>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="analyzeContinueOrDiscontinue()">
+                <i class="fas fa-calculator me-2"></i>分析実行
+            </button>
+        </div>
+    </div>
+    
+    <!-- 分析結果 -->
+    <div id="analysis_results" class="mt-4" style="display: none;">
+    </div>
+    
+    <div class="mt-4">
+        <a href="/decision" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>メニューに戻る
+        </a>
+    </div>
+</div>
+
+<script>
+let currentAnalysisType = 'general';
+
+function selectAnalysisType(type) {
+    currentAnalysisType = type;
+    
+    // ボタンのアクティブ状態を更新
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // 分析フォームを切り替え
+    document.getElementById('general_analysis').style.display = type === 'general' ? 'block' : 'none';
+    document.getElementById('make_or_buy_analysis').style.display = type === 'make_or_buy' ? 'block' : 'none';
+    document.getElementById('special_order_analysis').style.display = type === 'special_order' ? 'block' : 'none';
+    document.getElementById('continue_or_discontinue_analysis').style.display = type === 'continue_or_discontinue' ? 'block' : 'none';
+    
+    // 結果をクリア
+    document.getElementById('analysis_results').style.display = 'none';
+}
+
+async function analyzeGeneral() {
+    const data = {
+        scenario_a_sales: parseFloat(document.getElementById('general_a_sales').value),
+        scenario_a_variable_cost: parseFloat(document.getElementById('general_a_variable_cost').value),
+        scenario_a_fixed_cost: parseFloat(document.getElementById('general_a_fixed_cost').value),
+        scenario_b_sales: parseFloat(document.getElementById('general_b_sales').value),
+        scenario_b_variable_cost: parseFloat(document.getElementById('general_b_variable_cost').value),
+        scenario_b_fixed_cost: parseFloat(document.getElementById('general_b_fixed_cost').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/differential-analysis/general', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayGeneralResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+async function analyzeMakeOrBuy() {
+    const data = {
+        make_variable_cost: parseFloat(document.getElementById('make_variable_cost').value),
+        make_fixed_cost: parseFloat(document.getElementById('make_fixed_cost').value),
+        buy_price: parseFloat(document.getElementById('buy_price').value),
+        quantity: parseInt(document.getElementById('quantity').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/differential-analysis/make-or-buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayMakeOrBuyResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+async function analyzeSpecialOrder() {
+    const data = {
+        regular_price: parseFloat(document.getElementById('regular_price').value),
+        special_order_price: parseFloat(document.getElementById('special_order_price').value),
+        variable_cost: parseFloat(document.getElementById('special_variable_cost').value),
+        quantity: parseInt(document.getElementById('special_quantity').value),
+        additional_fixed_cost: parseFloat(document.getElementById('additional_fixed_cost').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/differential-analysis/special-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displaySpecialOrderResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+async function analyzeContinueOrDiscontinue() {
+    const data = {
+        sales: parseFloat(document.getElementById('continue_sales').value),
+        variable_cost: parseFloat(document.getElementById('continue_variable_cost').value),
+        direct_fixed_cost: parseFloat(document.getElementById('direct_fixed_cost').value),
+        avoidable_fixed_cost: parseFloat(document.getElementById('avoidable_fixed_cost').value),
+        unavoidable_fixed_cost: parseFloat(document.getElementById('unavoidable_fixed_cost').value)
+    };
+    
+    try {
+        const response = await fetch('/decision/differential-analysis/continue-or-discontinue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        displayContinueOrDiscontinueResults(result);
+    } catch (error) {
+        console.error('分析に失敗しました:', error);
+        alert('分析に失敗しました');
+    }
+}
+
+function displayGeneralResults(data) {
+    const resultsDiv = document.getElementById('analysis_results');
+    resultsDiv.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">分析結果</h5>
+                
+                <div class="alert alert-info">
+                    <strong>推奨事項:</strong> ${data.recommendation}
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>項目</th>
+                                <th>シナリオA</th>
+                                <th>シナリオB</th>
+                                <th>差額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>売上高</td>
+                                <td>${formatNumber(data.scenario_a.sales)}円</td>
+                                <td>${formatNumber(data.scenario_b.sales)}円</td>
+                                <td class="${data.differential.sales >= 0 ? 'text-success' : 'text-danger'}">${formatNumber(data.differential.sales)}円</td>
+                            </tr>
+                            <tr>
+                                <td>変動費</td>
+                                <td>${formatNumber(data.scenario_a.variable_cost)}円</td>
+                                <td>${formatNumber(data.scenario_b.variable_cost)}円</td>
+                                <td class="${data.differential.variable_cost <= 0 ? 'text-success' : 'text-danger'}">${formatNumber(data.differential.variable_cost)}円</td>
+                            </tr>
+                            <tr>
+                                <td>貢献利益</td>
+                                <td>${formatNumber(data.scenario_a.contribution_margin)}円</td>
+                                <td>${formatNumber(data.scenario_b.contribution_margin)}円</td>
+                                <td class="${data.differential.contribution_margin >= 0 ? 'text-success' : 'text-danger'}">${formatNumber(data.differential.contribution_margin)}円</td>
+                            </tr>
+                            <tr>
+                                <td>固定費</td>
+                                <td>${formatNumber(data.scenario_a.fixed_cost)}円</td>
+                                <td>${formatNumber(data.scenario_b.fixed_cost)}円</td>
+                                <td class="${data.differential.fixed_cost <= 0 ? 'text-success' : 'text-danger'}">${formatNumber(data.differential.fixed_cost)}円</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td><strong>利益</strong></td>
+                                <td><strong>${formatNumber(data.scenario_a.profit)}円</strong></td>
+                                <td><strong>${formatNumber(data.scenario_b.profit)}円</strong></td>
+                                <td class="${data.differential.profit >= 0 ? 'text-success' : 'text-danger'}"><strong>${formatNumber(data.differential.profit)}円</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
+}
+
+function displayMakeOrBuyResults(data) {
+    const resultsDiv = document.getElementById('analysis_results');
+    resultsDiv.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">分析結果</h5>
+                
+                <div class="alert alert-info">
+                    <strong>推奨事項:</strong> ${data.recommendation_text}
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">損益分岐点数量</h6>
+                                <h4>${data.breakeven_quantity === Infinity ? '∞' : formatNumber(data.breakeven_quantity)}</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card ${data.recommendation === 'make' ? 'bg-success' : 'bg-warning'} text-white">
+                            <div class="card-body text-center">
+                                <h6>推奨</h6>
+                                <h4>${data.recommendation === 'make' ? '自製' : '購入'}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>項目</th>
+                                <th>自製</th>
+                                <th>購入</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>総コスト</td>
+                                <td>${formatNumber(data.make.total_cost)}円</td>
+                                <td>${formatNumber(data.buy.total_cost)}円</td>
+                            </tr>
+                            <tr>
+                                <td>単位コスト</td>
+                                <td>${formatNumber(data.make.unit_cost)}円</td>
+                                <td>${formatNumber(data.buy.unit_cost)}円</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td><strong>コスト削減額</strong></td>
+                                <td colspan="2" class="text-center"><strong>${formatNumber(data.differential.savings)}円</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
+}
+
+function displaySpecialOrderResults(data) {
+    const resultsDiv = document.getElementById('analysis_results');
+    resultsDiv.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">分析結果</h5>
+                
+                <div class="alert alert-info">
+                    <strong>推奨事項:</strong> ${data.recommendation_text}
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="card ${data.recommendation === 'accept' ? 'bg-success' : 'bg-danger'} text-white">
+                            <div class="card-body text-center">
+                                <h6>推奨</h6>
+                                <h4>${data.recommendation === 'accept' ? '受諾' : '拒否'}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>項目</th>
+                                <th>通常注文</th>
+                                <th>特別注文</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>価格</td>
+                                <td>${formatNumber(data.regular.price)}円</td>
+                                <td>${formatNumber(data.special_order.price)}円</td>
+                            </tr>
+                            <tr>
+                                <td>貢献利益</td>
+                                <td>${formatNumber(data.regular.contribution_margin)}円</td>
+                                <td>${formatNumber(data.special_order.contribution_margin)}円</td>
+                            </tr>
+                            <tr>
+                                <td>追加固定費</td>
+                                <td>-</td>
+                                <td>${formatNumber(data.special_order.additional_fixed_cost)}円</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td><strong>利益</strong></td>
+                                <td><strong>${formatNumber(data.regular.profit)}円</strong></td>
+                                <td><strong>${formatNumber(data.special_order.profit)}円</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
+}
+
+function displayContinueOrDiscontinueResults(data) {
+    const resultsDiv = document.getElementById('analysis_results');
+    resultsDiv.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">分析結果</h5>
+                
+                <div class="alert alert-info">
+                    <strong>推奨事項:</strong> ${data.recommendation_text}
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="card ${data.recommendation === 'continue' ? 'bg-success' : 'bg-warning'} text-white">
+                            <div class="card-body text-center">
+                                <h6>推奨</h6>
+                                <h4>${data.recommendation === 'continue' ? '継続' : '撤退'}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>項目</th>
+                                <th>継続</th>
+                                <th>撤退</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>売上高</td>
+                                <td>${formatNumber(data.continue.sales)}円</td>
+                                <td>0円</td>
+                            </tr>
+                            <tr>
+                                <td>変動費</td>
+                                <td>${formatNumber(data.continue.variable_cost)}円</td>
+                                <td>0円</td>
+                            </tr>
+                            <tr>
+                                <td>貢献利益</td>
+                                <td>${formatNumber(data.continue.contribution_margin)}円</td>
+                                <td>0円</td>
+                            </tr>
+                            <tr>
+                                <td>回避可能固定費</td>
+                                <td>${formatNumber(data.continue.avoidable_fixed_cost)}円</td>
+                                <td>0円</td>
+                            </tr>
+                            <tr>
+                                <td>回避不可能固定費</td>
+                                <td>${formatNumber(data.continue.unavoidable_fixed_cost)}円</td>
+                                <td>${formatNumber(data.discontinue.unavoidable_fixed_cost)}円</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td><strong>利益</strong></td>
+                                <td><strong>${formatNumber(data.continue.profit)}円</strong></td>
+                                <td><strong>${formatNumber(data.discontinue.profit)}円</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    resultsDiv.style.display = 'block';
+}
+
+function formatNumber(num) {
+    return Math.round(num).toLocaleString();
+}
+</script>
+{% endblock %}

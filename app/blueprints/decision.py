@@ -1973,3 +1973,130 @@ def least_squares_forecast_forecast():
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+# ============================================================
+# 差額原価収益分析
+# ============================================================
+
+@bp.route('/differential-analysis')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def differential_analysis():
+    """差額原価収益分析ページ"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return redirect(url_for('decision.index'))
+    
+    return render_template('differential_cost_analysis.html')
+
+
+@bp.route('/differential-analysis/general', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def differential_analysis_general():
+    """一般的な差額分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.differential_analysis import calculate_differential_profit
+        
+        result = calculate_differential_profit(
+            scenario_a_sales=float(data.get('scenario_a_sales', 0)),
+            scenario_a_variable_cost=float(data.get('scenario_a_variable_cost', 0)),
+            scenario_a_fixed_cost=float(data.get('scenario_a_fixed_cost', 0)),
+            scenario_b_sales=float(data.get('scenario_b_sales', 0)),
+            scenario_b_variable_cost=float(data.get('scenario_b_variable_cost', 0)),
+            scenario_b_fixed_cost=float(data.get('scenario_b_fixed_cost', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/differential-analysis/make-or-buy', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def differential_analysis_make_or_buy():
+    """自製か購入か分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.differential_analysis import analyze_make_or_buy
+        
+        result = analyze_make_or_buy(
+            make_variable_cost=float(data.get('make_variable_cost', 0)),
+            make_fixed_cost=float(data.get('make_fixed_cost', 0)),
+            buy_price=float(data.get('buy_price', 0)),
+            quantity=int(data.get('quantity', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/differential-analysis/special-order', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def differential_analysis_special_order():
+    """特別注文の受諾可否分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.differential_analysis import analyze_accept_or_reject_order
+        
+        result = analyze_accept_or_reject_order(
+            regular_price=float(data.get('regular_price', 0)),
+            special_order_price=float(data.get('special_order_price', 0)),
+            variable_cost=float(data.get('variable_cost', 0)),
+            quantity=int(data.get('quantity', 0)),
+            additional_fixed_cost=float(data.get('additional_fixed_cost', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/differential-analysis/continue-or-discontinue', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def differential_analysis_continue_or_discontinue():
+    """事業継続・撤退分析を実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    
+    try:
+        from ..utils.differential_analysis import analyze_continue_or_discontinue
+        
+        result = analyze_continue_or_discontinue(
+            sales=float(data.get('sales', 0)),
+            variable_cost=float(data.get('variable_cost', 0)),
+            direct_fixed_cost=float(data.get('direct_fixed_cost', 0)),
+            avoidable_fixed_cost=float(data.get('avoidable_fixed_cost', 0)),
+            unavoidable_fixed_cost=float(data.get('unavoidable_fixed_cost', 0))
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
