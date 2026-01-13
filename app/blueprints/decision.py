@@ -1018,6 +1018,7 @@ def financial_analysis_detailed_analyze():
     db = SessionLocal()
     try:
         from ..utils.advanced_financial_analysis import calculate_all_indicators
+        from ..models_decision import ProfitLossStatement, BalanceSheet
         
         # 企業情報を取得
         company = db.query(Company).filter(
