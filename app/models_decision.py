@@ -651,11 +651,11 @@ class AccountMapping(Base):
     company = relationship("Company", back_populates="account_mappings")
 
 
-# ==================== 予算管理 ====================
+# ==================== 年次予算管理 ====================
 
-class Budget(Base):
-    """予算テーブル"""
-    __tablename__ = 'budgets'
+class AnnualBudget(Base):
+    """年次予算テーブル"""
+    __tablename__ = 'annual_budgets'
     
     __table_args__ = {'extend_existing': True}
     
@@ -692,8 +692,4 @@ class Budget(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     
     # リレーション
-    fiscal_year = relationship("FiscalYear", back_populates="budgets")
-
-
-# FiscalYearモデルにbudgetsリレーションを追加（既存のFiscalYearクラスに追加する必要があります）
-# fiscal_year.budgets = relationship("Budget", back_populates="fiscal_year")
+    fiscal_year = relationship("FiscalYear", back_populates="annual_budgets")
