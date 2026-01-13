@@ -368,8 +368,18 @@ document.getElementById('companySelect').addEventListener('change', function() {
     fetch(`/decision/fiscal-years/by-company/${companyId}`)
         .then(response => response.json())
         .then(data => {
+            if (data && data.success === false) {
+                throw new Error(data.error || '会計年度の取得に失敗しました。');
+            }
+
+            const fiscalYears = Array.isArray(data) ? data : (data && data.fiscal_years ? data.fiscal_years : []);
+            if (fiscalYears.length === 0) {
+                fiscalYearSelect.innerHTML = '<option value="">会計年度がありません</option>';
+                return;
+            }
+
             fiscalYearSelect.innerHTML = '<option value="">選択してください</option>';
-            data.forEach(fy => {
+            fiscalYears.forEach(fy => {
                 const option = document.createElement('option');
                 option.value = fy.id;
                 option.textContent = fy.year_name;
