@@ -5,7 +5,7 @@
 from flask import Blueprint, render_template, redirect, url_for, session, request, jsonify
 from ..utils.decorators import require_roles, ROLES
 from ..db import SessionLocal
-from ..models_decision import Company, FiscalYear
+from ..models_decision import Company, FiscalYear, ProfitLossStatement, BalanceSheet
 from datetime import datetime
 
 bp = Blueprint('decision', __name__, url_prefix='/decision')
