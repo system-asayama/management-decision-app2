@@ -70,6 +70,7 @@ class FiscalYear(Base):
     financial_indicators = relationship("FinancialIndicator", back_populates="fiscal_year", cascade="all, delete-orphan")
     business_segments = relationship("BusinessSegment", back_populates="fiscal_year", cascade="all, delete-orphan")
     budgets = relationship("Budget", back_populates="fiscal_year", cascade="all, delete-orphan")
+    annual_budgets = relationship("AnnualBudget", back_populates="fiscal_year", cascade="all, delete-orphan")
     cash_flow_plans = relationship("CashFlowPlan", back_populates="fiscal_year", cascade="all, delete-orphan")
     labor_plans = relationship("LaborPlan", back_populates="fiscal_year", cascade="all, delete-orphan")
     capital_investment_plans = relationship("CapitalInvestmentPlan", back_populates="fiscal_year", cascade="all, delete-orphan")
