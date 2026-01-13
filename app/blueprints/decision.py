@@ -744,7 +744,7 @@ def dashboard_multi_year_data(company_id):
         # 会計年度一覧を取得
         fiscal_years = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
-        ).order_by(FiscalYear.year).all()
+        ).order_by(FiscalYear.start_date).all()
         
         multi_year_data = []
         for fy in fiscal_years:
