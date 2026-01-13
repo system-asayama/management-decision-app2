@@ -176,7 +176,18 @@ document.getElementById('companySelect').addEventListener('change', async functi
     
     try {
         const response = await fetch(`/decision/fiscal-years/by-company/${companyId}`);
-        const fiscalYears = await response.json();
+        const payload = await response.json();
+
+        if (payload && payload.success === false) {
+            throw new Error(payload.error || '会計年度の取得に失敗しました');
+        }
+
+        const fiscalYears = Array.isArray(payload) ? payload : (payload && payload.fiscal_years ? payload.fiscal_years : []);
+
+        if (fiscalYears.length === 0) {
+            fiscalYearSelect.innerHTML = '<option value="">会計年度がありません</option>';
+            return;
+        }
         
         fiscalYears.forEach(fy => {
             const option = document.createElement('option');
