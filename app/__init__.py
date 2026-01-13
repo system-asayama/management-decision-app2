@@ -255,6 +255,36 @@ def create_app() -> Flask:
     except Exception as e:
         print(f"⚠️ financial_ui blueprint 登録エラー: {e}")
 
+    try:
+        from .blueprints.multi_year_plan_bp import bp as multi_year_plan_bp
+        app.register_blueprint(multi_year_plan_bp)
+    except Exception as e:
+        print(f"⚠️ multi_year_plan blueprint 登録エラー: {e}")
+
+    try:
+        from .blueprints.financial_series_bp import bp as financial_series_bp
+        app.register_blueprint(financial_series_bp)
+    except Exception as e:
+        print(f"⚠️ financial_series blueprint 登録エラー: {e}")
+
+    try:
+        from .blueprints.evaluation_bp import bp as evaluation_bp
+        app.register_blueprint(evaluation_bp)
+    except Exception as e:
+        print(f"⚠️ evaluation blueprint 登録エラー: {e}")
+
+    try:
+        from .blueprints.excel_import_bp import bp as excel_import_bp
+        app.register_blueprint(excel_import_bp)
+    except Exception as e:
+        print(f"⚠️ excel_import blueprint 登録エラー: {e}")
+
+    try:
+        from .blueprints.working_capital_forecast_bp import bp as working_capital_forecast_bp
+        app.register_blueprint(working_capital_forecast_bp)
+    except Exception as e:
+        print(f"⚠️ working_capital_forecast blueprint 登録エラー: {e}")
+
     # エラーハンドラ
     @app.errorhandler(404)
     def not_found(error):

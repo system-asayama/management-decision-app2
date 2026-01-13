@@ -14,7 +14,8 @@ from app.models_decision import (
     RestructuredPL, RestructuredBS, LaborCost, FinancialIndicator,
     BusinessSegment, Budget, CashFlowPlan, LaborPlan, CapitalInvestmentPlan,
     Simulation, SimulationYear, Loan, DifferentialAnalysis, Notification,
-    AccountMapping
+    AccountMapping, MultiYearPlan, WorkingCapitalAssumption, DebtRepaymentAssumption,
+    MonthlyCashFlowPlan
 )
 
 def create_tables():

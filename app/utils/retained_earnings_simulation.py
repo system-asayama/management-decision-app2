@@ -150,3 +150,55 @@ def optimize_dividend_payout(
         'dividend': round(dividend, 2),
         'retained_earnings': round(retained_earnings, 2)
     }
+
+
+def simulate_retained_earnings_scenarios(
+    current_net_assets: float,
+    annual_net_income: float,
+    dividend_payout_ratios: list,
+    years: int,
+    growth_rate: float = 0.0
+) -> dict:
+    """
+    複数の配当性向シナリオで内部留保シミュレーションを実行
+    
+    Args:
+        current_net_assets: 現在の純資産
+        annual_net_income: 年間当期純利益
+        dividend_payout_ratios: 配当性向のリスト（例: [0.2, 0.3, 0.4]）
+        years: シミュレーション年数
+        growth_rate: 利益成長率（0.0〜1.0）
+    
+    Returns:
+        dict: シナリオごとのシミュレーション結果
+    """
+    scenarios = []
+    
+    for i, payout_ratio in enumerate(dividend_payout_ratios, 1):
+        # 各シナリオでシミュレーションを実行
+        result = simulate_retained_earnings(
+            current_net_assets=current_net_assets,
+            annual_net_income=annual_net_income,
+            dividend_payout_ratio=payout_ratio,
+            years=years,
+            growth_rate=growth_rate
+        )
+        
+        # シナリオ情報を追加
+        scenarios.append({
+            'scenario_id': i,
+            'scenario_name': f'シナリオ{i}',
+            'dividend_payout_ratio': payout_ratio,
+            'simulation_results': result['simulation_results'],
+            'summary': result['summary']
+        })
+    
+    return {
+        'scenarios': scenarios,
+        'parameters': {
+            'current_net_assets': round(current_net_assets, 2),
+            'annual_net_income': round(annual_net_income, 2),
+            'years': years,
+            'growth_rate': growth_rate
+        }
+    }
