@@ -1773,6 +1773,7 @@ def retained_earnings_simulation_simulate():
     db = SessionLocal()
     try:
         from ..utils.retained_earnings_simulation import simulate_retained_earnings
+        from app.models_decision import ProfitLossStatement, BalanceSheet
         
         # 企業情報を取得
         company = db.query(Company).filter(
