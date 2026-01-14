@@ -2008,6 +2008,165 @@ def retained_earnings_simulation_scenarios():
 # 貢献度分析
 # ============================================================
 
+@bp.route('/internal-reserve-usage/simulate')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def internal_reserve_usage_simulate():
+    """内部留保使途（再投資 vs 負債返済）シミュレーション"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    years = request.args.get('years', type=int, default=3)
+    dividend_payout_ratio = request.args.get('dividend_payout_ratio', type=float, default=0.3)
+    reinvestment_ratio = request.args.get('reinvestment_ratio', type=float, default=0.5)
+    growth_rate = request.args.get('growth_rate', type=float, default=0.0)
+    
+    if not company_id or not fiscal_year_id:
+        return jsonify({'error': '企業IDと会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.retained_earnings_simulation import simulate_internal_reserve_usage
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 財務データを取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'error': '財務データが見つかりません'}), 404
+        
+        # シミュレーションを実行
+        result = simulate_internal_reserve_usage(
+            current_net_assets=float(balance_sheet.total_equity),
+            current_total_assets=float(balance_sheet.total_assets),
+            current_liabilities=float(balance_sheet.total_liabilities),
+            annual_net_income=float(profit_loss.net_income),
+            dividend_payout_ratio=dividend_payout_ratio,
+            reinvestment_ratio=reinvestment_ratio,
+            years=years,
+            growth_rate=growth_rate
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/internal-reserve-usage/scenarios')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def internal_reserve_usage_scenarios():
+    """複数シナリオで内部留保使途をシミュレーション"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    company_id = request.args.get('company_id', type=int)
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    years = request.args.get('years', type=int, default=3)
+    dividend_payout_ratio = request.args.get('dividend_payout_ratio', type=float, default=0.3)
+    growth_rate = request.args.get('growth_rate', type=float, default=0.0)
+    
+    # 再投資比率のリストを取得（カンマ区切り）
+    reinvestment_ratios_str = request.args.get('reinvestment_ratios', '')
+    
+    if not company_id or not fiscal_year_id:
+        return jsonify({'error': '企業IDと会計年度IDを指定してください'}), 400
+    
+    if not reinvestment_ratios_str:
+        return jsonify({'error': '再投資比率のリストを指定してください'}), 400
+    
+    try:
+        # 再投資比率のリストをパース
+        reinvestment_ratios = [float(r.strip()) for r in reinvestment_ratios_str.split(',')]
+    except ValueError:
+        return jsonify({'error': '再投資比率の形式が不正です'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.retained_earnings_simulation import simulate_internal_reserve_scenarios
+        from app.models_decision import ProfitLossStatement, BalanceSheet
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id,
+            FiscalYear.company_id == company_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 財務データを取得
+        profit_loss = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        balance_sheet = db.query(BalanceSheet).filter(
+            BalanceSheet.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not profit_loss or not balance_sheet:
+            return jsonify({'error': '財務データが見つかりません'}), 404
+        
+        # シナリオ分析を実行
+        result = simulate_internal_reserve_scenarios(
+            current_net_assets=float(balance_sheet.total_equity),
+            current_total_assets=float(balance_sheet.total_assets),
+            current_liabilities=float(balance_sheet.total_liabilities),
+            annual_net_income=float(profit_loss.net_income),
+            dividend_payout_ratio=dividend_payout_ratio,
+            reinvestment_ratios=reinvestment_ratios,
+            years=years,
+            growth_rate=growth_rate
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
 @bp.route('/contribution-analysis')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def contribution_analysis():
