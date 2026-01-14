@@ -60,10 +60,9 @@ def calculate_debt_capacity_method1(fiscal_year_id):
         total_assets = float(bs.total_assets or 0)  # 総資本
         sales = float(pl.sales or 0)  # 売上高
         
-        # 土地と有価証券（BSから取得、存在しない場合は0）
-        # 注: BSモデルに土地・有価証券の項目がない場合は0とする
-        land_value = 0.0  # 土地（時価）
-        securities_value = 0.0  # 有価証券（時価）
+        # 土地と有価証券（BSから取得）
+        land_value = float(getattr(bs, 'land_market_value', 0) or 0)  # 土地（時価）
+        securities_value = float(getattr(bs, 'securities_market_value', 0) or 0)  # 有価証券（時価）
         
         # Excelの数式どおりに計算
         # 1. 金融調達率より = 総資本 × 30%
@@ -186,5 +185,84 @@ def calculate_debt_capacity_method3(fiscal_year_id, standard_gross_profit_intere
         
     except Exception as e:
         raise Exception(f"Method3計算エラー: {str(e)}")
+    finally:
+        db.close()
+
+
+
+def calculate_debt_capacity_rate_table(fiscal_year_id, standard_gross_profit_interest_rate=0.10):
+    """
+    資金力--4: 金利階段表による借入金許容限度額
+    
+    利率を0.5%刻みで0.5%〜8%まで変化させ、
+    それぞれの平均金利に対してMethod3の計算式を適用して許容借入額をテーブルで返す。
+    
+    Args:
+        fiscal_year_id: 会計年度ID
+        standard_gross_profit_interest_rate: 標準売上総利益金融費用率（デフォルト: 0.10 = 10%）
+    
+    Returns:
+        dict: {
+            'rate_table': [
+                {
+                    'interest_rate': 金利（%）,
+                    'interest_rate_decimal': 金利（小数）,
+                    'allowable_debt': 許容借入額,
+                    'annual_interest_payment': 年間支払利息
+                },
+                ...
+            ],
+            'gross_profit': 売上総利益,
+            'standard_rate': 標準売上総利益金融費用率
+        }
+    """
+    db = SessionLocal()
+    
+    try:
+        # PLを取得
+        pl = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not pl:
+            raise ValueError(f"会計年度ID {fiscal_year_id} のPLが見つかりません")
+        
+        # 売上総利益
+        gross_profit = float(pl.gross_profit or 0)
+        
+        # 標準売上総利益金融費用率（デフォルト: 10%）
+        if standard_gross_profit_interest_rate is None:
+            standard_gross_profit_interest_rate = 0.10
+        
+        # 金利階段表を作成（0.5%〜8.0%、0.5%刻み）
+        rate_table = []
+        for rate_percent in range(5, 85, 5):  # 5 = 0.5%, 85 = 8.5%（8.0%まで）
+            interest_rate_percent = rate_percent / 10.0  # 0.5, 1.0, 1.5, ...
+            interest_rate_decimal = interest_rate_percent / 100.0  # 0.005, 0.01, 0.015, ...
+            
+            # Method3の計算式: 許容限度額 = 売上総利益 × 標準率 ÷ 平均金利
+            if interest_rate_decimal > 0:
+                allowable_debt = (gross_profit * standard_gross_profit_interest_rate) / interest_rate_decimal
+                annual_interest_payment = allowable_debt * interest_rate_decimal
+            else:
+                allowable_debt = 0.0
+                annual_interest_payment = 0.0
+            
+            rate_table.append({
+                'interest_rate': round(interest_rate_percent, 1),
+                'interest_rate_decimal': round(interest_rate_decimal, 4),
+                'allowable_debt': round(allowable_debt, 2),
+                'annual_interest_payment': round(annual_interest_payment, 2)
+            })
+        
+        return {
+            'rate_table': rate_table,
+            'gross_profit': round(gross_profit, 2),
+            'standard_rate': standard_gross_profit_interest_rate,
+            'standard_rate_percent': round(standard_gross_profit_interest_rate * 100, 2)
+        }
+        
+    except Exception as e:
+        raise Exception(f"金利階段表計算エラー: {str(e)}")
     finally:
         db.close()

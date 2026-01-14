@@ -131,6 +131,10 @@ class BalanceSheet(Base):
     fixed_assets = Column(Integer, default=0, nullable=False)
     total_assets = Column(Integer, default=0, nullable=False)
     
+    # 担保力計算用の追加項目
+    land_market_value = Column(Integer, default=0, nullable=False)  # 土地（時価）
+    securities_market_value = Column(Integer, default=0, nullable=False)  # 有価証券（時価）
+    
     # 負債
     current_liabilities = Column(Integer, default=0, nullable=False)
     fixed_liabilities = Column(Integer, default=0, nullable=False)

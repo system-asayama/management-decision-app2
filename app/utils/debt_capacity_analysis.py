@@ -223,3 +223,70 @@ def evaluate_debt_health(equity_ratio, debt_ratio, debt_service_years, interest_
         'overall_evaluation': overall_evaluation,
         'overall_color': overall_color
     }
+
+
+def calculate_debt_capacity_method2(gross_profit, operating_income, interest_expense, average_interest_rate, target_interest_burden_ratio=0.10):
+    """
+    資金力-2: 安全金利法による借入金許容限度額を計算
+    
+    Excel の「資金力-2」シートの計算式を実装。
+    年間支払利息を売上総利益の一定割合以下に抑えるという手法。
+    
+    Args:
+        gross_profit: 売上総利益
+        operating_income: 営業利益
+        interest_expense: 現在の支払利息
+        average_interest_rate: 平均金利（%）
+        target_interest_burden_ratio: 目標利息負担率（デフォルト: 0.10 = 10%）
+    
+    Returns:
+        dict: 資金力-2分析結果
+    """
+    # 現在の利息負担率 = 支払利息 / 売上総利益
+    current_interest_burden_ratio = interest_expense / gross_profit if gross_profit > 0 else 0
+    
+    # 安全な利息支払額 = 売上総利益 × 目標利息負担率
+    safe_interest_payment = gross_profit * target_interest_burden_ratio
+    
+    # 許容負債額 = 安全な利息支払額 / 平均金利
+    average_interest_rate_decimal = average_interest_rate / 100
+    allowable_debt = safe_interest_payment / average_interest_rate_decimal if average_interest_rate_decimal > 0 else 0
+    
+    # 現在の推定負債額 = 現在の支払利息 / 平均金利
+    current_estimated_debt = interest_expense / average_interest_rate_decimal if average_interest_rate_decimal > 0 else 0
+    
+    # 追加借入可能額 = 許容負債額 - 現在の推定負債額
+    additional_borrowing_capacity = allowable_debt - current_estimated_debt
+    
+    # インタレストカバレッジレシオ = 営業利益 / 支払利息
+    interest_coverage_ratio = operating_income / interest_expense if interest_expense > 0 else float('inf')
+    
+    # 評価
+    if current_interest_burden_ratio <= target_interest_burden_ratio:
+        evaluation = "安全"
+        evaluation_color = "success"
+    elif current_interest_burden_ratio <= target_interest_burden_ratio * 1.5:
+        evaluation = "注意"
+        evaluation_color = "warning"
+    else:
+        evaluation = "危険"
+        evaluation_color = "danger"
+    
+    return {
+        'method': 'Method2: 安全金利法',
+        'gross_profit': gross_profit,
+        'operating_income': operating_income,
+        'current_interest_expense': interest_expense,
+        'current_interest_burden_ratio': current_interest_burden_ratio,
+        'current_interest_burden_ratio_percent': current_interest_burden_ratio * 100,
+        'target_interest_burden_ratio': target_interest_burden_ratio,
+        'target_interest_burden_ratio_percent': target_interest_burden_ratio * 100,
+        'safe_interest_payment': safe_interest_payment,
+        'average_interest_rate': average_interest_rate,
+        'allowable_debt': allowable_debt,
+        'current_estimated_debt': current_estimated_debt,
+        'additional_borrowing_capacity': additional_borrowing_capacity,
+        'interest_coverage_ratio': interest_coverage_ratio,
+        'evaluation': evaluation,
+        'evaluation_color': evaluation_color
+    }

@@ -403,3 +403,105 @@ def get_monthly_cash_flow_plan(fiscal_year_id):
         return jsonify({'error': str(e)}), 500
     finally:
         db.close()
+
+
+
+@bp.route('/bs-market-values', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def import_bs_market_values():
+    """
+    土地・有価証券の時価をExcelから読み取ってBSに反映
+    
+    リクエスト:
+        - file: Excelファイル（multipart/form-data）
+        - company_id: 企業ID
+        - fiscal_year_ids: 会計年度IDのリスト（カンマ区切り）
+    
+    レスポンス:
+        - balance_sheets: 更新されたBSのリスト
+    """
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    # パラメータを取得
+    company_id = request.form.get('company_id', type=int)
+    fiscal_year_ids_str = request.form.get('fiscal_year_ids', '')
+    
+    if not company_id:
+        return jsonify({'error': '企業IDを指定してください'}), 400
+    
+    if not fiscal_year_ids_str:
+        return jsonify({'error': '会計年度IDのリストを指定してください'}), 400
+    
+    try:
+        fiscal_year_ids = [int(fid.strip()) for fid in fiscal_year_ids_str.split(',')]
+        if len(fiscal_year_ids) != 3:
+            return jsonify({'error': '会計年度IDは3つ指定してください（初年度、2年度、3年度）'}), 400
+    except ValueError:
+        return jsonify({'error': '会計年度IDの形式が不正です'}), 400
+    
+    # ファイルを取得
+    if 'file' not in request.files:
+        return jsonify({'error': 'ファイルがアップロードされていません'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'ファイルが選択されていません'}), 400
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        return jsonify({'error': 'Excelファイル（.xlsx または .xls）をアップロードしてください'}), 400
+    
+    db = SessionLocal()
+    try:
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # 会計年度情報を取得
+        for fiscal_year_id in fiscal_year_ids:
+            fiscal_year = db.query(FiscalYear).filter(
+                FiscalYear.id == fiscal_year_id,
+                FiscalYear.company_id == company_id
+            ).first()
+            
+            if not fiscal_year:
+                return jsonify({'error': f'会計年度ID {fiscal_year_id} が見つかりません'}), 404
+        
+        # 一時ファイルに保存
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            file.save(tmp_file.name)
+            tmp_path = tmp_file.name
+        
+        try:
+            # Excelファイルを読み込む
+            wb = openpyxl.load_workbook(tmp_path, data_only=True)
+            
+            # データをインポート
+            from ..utils.bs_market_value_importer import import_bs_market_values
+            results = import_bs_market_values(wb, company_id, fiscal_year_ids, db)
+            
+            if results['success']:
+                return jsonify({
+                    'message': 'インポート成功',
+                    'balance_sheets': results['balance_sheets']
+                })
+            else:
+                return jsonify({'error': 'インポートに失敗しました'}), 500
+        finally:
+            # 一時ファイルを削除
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()

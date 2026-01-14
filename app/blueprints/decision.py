@@ -2753,3 +2753,872 @@ def financing_repayment_refinance():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+
+@bp.route('/debt-capacity/method2')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def debt_capacity_method2():
+    """借入金許容限度額分析 Method2（安全金利法）"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    target_interest_burden_ratio = request.args.get('target_interest_burden_ratio', type=float, default=0.10)
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.debt_capacity_analysis import calculate_debt_capacity_method2
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # PLを取得
+        pl = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not pl:
+            return jsonify({'error': 'PLが見つかりません'}), 404
+        
+        # 基礎データ
+        gross_profit = float(pl.gross_profit or 0)
+        operating_income = float(pl.operating_income or 0)
+        interest_expense = float(pl.non_operating_expenses or 0)  # 簡易的に営業外費用を利息とする
+        
+        # 平均金利（仮に3%とする、実際はユーザ入力が必要）
+        average_interest_rate = 3.0
+        
+        # Method2を計算
+        result = calculate_debt_capacity_method2(
+            gross_profit=gross_profit,
+            operating_income=operating_income,
+            interest_expense=interest_expense,
+            average_interest_rate=average_interest_rate,
+            target_interest_burden_ratio=target_interest_burden_ratio
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/debt-capacity/method4')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def debt_capacity_method4():
+    """借入金許容限度額分析 Method4（金利階段表）"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    standard_rate = request.args.get('standard_rate', type=float, default=0.10)
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.debt_capacity_method13 import calculate_debt_capacity_rate_table
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # Method4（金利階段表）を計算
+        result = calculate_debt_capacity_rate_table(fiscal_year_id, standard_rate)
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/cash-flow/integrated-monthly-plan')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def integrated_monthly_cash_flow_plan():
+    """統合月次資金繰り表を生成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    fiscal_year_id = request.args.get('fiscal_year_id', type=int)
+    beginning_cash_balance = request.args.get('beginning_cash_balance', type=float, default=1000000)
+    minimum_cash_balance = request.args.get('minimum_cash_balance', type=float, default=500000)
+    
+    if not fiscal_year_id:
+        return jsonify({'error': '会計年度IDを指定してください'}), 400
+    
+    db = SessionLocal()
+    try:
+        from ..utils.integrated_cash_flow_planner import (
+            generate_integrated_monthly_cash_flow,
+            calculate_operating_cash_flow_from_pl,
+            calculate_investment_cash_flow_from_capex,
+            calculate_financing_cash_flow_from_debt,
+            generate_shortage_alert_message,
+            suggest_financing_solution
+        )
+        from ..utils.repayment_plan_formatter import format_cash_flow_table_for_ui
+        
+        # 会計年度情報を取得
+        fiscal_year = db.query(FiscalYear).filter(
+            FiscalYear.id == fiscal_year_id
+        ).first()
+        
+        if not fiscal_year:
+            return jsonify({'error': '会計年度が見つかりません'}), 404
+        
+        # 企業情報を取得
+        company = db.query(Company).filter(
+            Company.id == fiscal_year.company_id,
+            Company.tenant_id == tenant_id
+        ).first()
+        
+        if not company:
+            return jsonify({'error': '企業が見つかりません'}), 404
+        
+        # PLを取得
+        pl = db.query(ProfitLossStatement).filter(
+            ProfitLossStatement.fiscal_year_id == fiscal_year_id
+        ).first()
+        
+        if not pl:
+            return jsonify({'error': 'PLが見つかりません'}), 404
+        
+        # 簡易的に年間データを12ヶ月に均等配分
+        monthly_sales = [float(pl.sales or 0) / 12] * 12
+        monthly_cost_of_sales = [float(pl.cost_of_sales or 0) / 12] * 12
+        monthly_operating_expenses = [float(pl.operating_expenses or 0) / 12] * 12
+        
+        # 営業CFを計算
+        monthly_operating_cf = calculate_operating_cash_flow_from_pl(
+            monthly_sales=monthly_sales,
+            monthly_cost_of_sales=monthly_cost_of_sales,
+            monthly_operating_expenses=monthly_operating_expenses
+        )
+        
+        # 投資CFを計算（簡易的にゼロとする）
+        monthly_investment_cf = calculate_investment_cash_flow_from_capex(
+            monthly_capital_expenditure=[0] * 12
+        )
+        
+        # 財務CFを計算（簡易的にゼロとする）
+        monthly_financing_cf = calculate_financing_cash_flow_from_debt(
+            monthly_borrowing=[0] * 12,
+            monthly_debt_repayment=[0] * 12,
+            monthly_interest_payment=[0] * 12
+        )
+        
+        # 統合資金繰り表を生成
+        result = generate_integrated_monthly_cash_flow(
+            fiscal_year_id=fiscal_year_id,
+            beginning_cash_balance=beginning_cash_balance,
+            monthly_operating_cash_flow=monthly_operating_cf,
+            monthly_investment_cash_flow=monthly_investment_cf,
+            monthly_financing_cash_flow=monthly_financing_cf,
+            minimum_cash_balance=minimum_cash_balance
+        )
+        
+        # UI表示用に整形
+        formatted_table = format_cash_flow_table_for_ui(result['cash_flow_table'])
+        
+        # 警告メッセージを生成
+        alert_message = generate_shortage_alert_message(result['shortage_warnings'])
+        
+        # 資金調達提案を生成
+        financing_solution = suggest_financing_solution(
+            result['shortage_warnings'],
+            available_credit_line=5000000  # 仮の与信枠
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'fiscal_year_id': result['fiscal_year_id'],
+                'beginning_cash_balance': result['beginning_cash_balance'],
+                'minimum_cash_balance': result['minimum_cash_balance'],
+                'ending_cash_balance': result['ending_cash_balance'],
+                'has_shortage': result['has_shortage'],
+                'shortage_count': len(result['shortage_warnings']),
+                'cash_flow_table': formatted_table,
+                'shortage_warnings': result['shortage_warnings'],
+                'alert_message': alert_message,
+                'financing_solution': financing_solution
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
+
+
+@bp.route('/financing/amortization-schedule')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def amortization_schedule():
+    """償却スケジュールを生成（UI表示用に整形）"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    principal = request.args.get('principal', type=float)
+    annual_interest_rate = request.args.get('annual_interest_rate', type=float)
+    term_years = request.args.get('term_years', type=int)
+    payment_frequency = request.args.get('payment_frequency', type=str, default='monthly')
+    
+    if not principal or not annual_interest_rate or not term_years:
+        return jsonify({'error': 'パラメータが不足しています'}), 400
+    
+    try:
+        from ..utils.financing_repayment_planner import generate_amortization_schedule
+        from ..utils.repayment_plan_formatter import format_amortization_schedule_for_ui
+        
+        # 償却スケジュールを生成
+        schedule = generate_amortization_schedule(
+            principal=principal,
+            annual_interest_rate=annual_interest_rate,
+            term_years=term_years,
+            payment_frequency=payment_frequency
+        )
+        
+        # UI表示用に整形
+        formatted_schedule = format_amortization_schedule_for_ui(schedule, payment_frequency)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_schedule
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/financing/refinancing-comparison')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def refinancing_comparison():
+    """借換え効果比較（UI表示用に整形）"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    current_loan_balance = request.args.get('current_loan_balance', type=float)
+    current_interest_rate = request.args.get('current_interest_rate', type=float)
+    remaining_term_years = request.args.get('remaining_term_years', type=int)
+    new_interest_rate = request.args.get('new_interest_rate', type=float)
+    refinancing_cost = request.args.get('refinancing_cost', type=float, default=0)
+    
+    if not current_loan_balance or not current_interest_rate or not remaining_term_years or not new_interest_rate:
+        return jsonify({'error': 'パラメータが不足しています'}), 400
+    
+    try:
+        from ..utils.financing_repayment_planner import calculate_refinancing_benefit
+        from ..utils.repayment_plan_formatter import format_refinancing_comparison_for_ui
+        
+        # 借換え効果を計算
+        result = calculate_refinancing_benefit(
+            current_loan_balance=current_loan_balance,
+            current_interest_rate=current_interest_rate,
+            remaining_term_years=remaining_term_years,
+            new_interest_rate=new_interest_rate,
+            refinancing_cost=refinancing_cost
+        )
+        
+        # UI表示用に整形
+        formatted_result = format_refinancing_comparison_for_ui(result)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/differential-analysis/equipment-investment')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def equipment_investment_differential_analysis():
+    """設備投資の差額原価収益分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    equipment_cost = request.args.get('equipment_cost', type=float)
+    useful_life = request.args.get('useful_life', type=int)
+    current_labor_cost = request.args.get('current_labor_cost', type=float)
+    new_labor_cost = request.args.get('new_labor_cost', type=float)
+    tax_rate = request.args.get('tax_rate', type=float, default=30.0)
+    discount_rate = request.args.get('discount_rate', type=float, default=6.0)
+    
+    if not equipment_cost or not useful_life or not current_labor_cost or not new_labor_cost:
+        return jsonify({'error': 'パラメータが不足しています'}), 400
+    
+    try:
+        from ..utils.equipment_investment_differential_analysis import (
+            calculate_equipment_investment_differential_analysis,
+            format_differential_analysis_for_ui
+        )
+        
+        # 差額原価収益分析を実行
+        result = calculate_equipment_investment_differential_analysis(
+            equipment_cost=equipment_cost,
+            useful_life=useful_life,
+            current_labor_cost=current_labor_cost,
+            new_labor_cost=new_labor_cost,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate
+        )
+        
+        # UI表示用に整形
+        formatted_result = format_differential_analysis_for_ui(result)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/differential-analysis/compare-equipment-investments', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def compare_equipment_investments():
+    """複数の設備投資案を比較"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data or 'investment_plans' not in data:
+        return jsonify({'error': 'investment_plansが必要です'}), 400
+    
+    investment_plans = data['investment_plans']
+    tax_rate = data.get('tax_rate', 30.0)
+    discount_rate = data.get('discount_rate', 6.0)
+    
+    try:
+        from ..utils.equipment_investment_differential_analysis import (
+            compare_multiple_equipment_investments,
+            format_differential_analysis_for_ui
+        )
+        
+        # 複数の投資案を比較
+        result = compare_multiple_equipment_investments(
+            investment_plans=investment_plans,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate
+        )
+        
+        # 各投資案をUI表示用に整形
+        formatted_plans = []
+        for plan in result['investment_plans']:
+            formatted_plan = format_differential_analysis_for_ui(plan)
+            formatted_plan['plan_name'] = plan['plan_name']
+            formatted_plans.append(formatted_plan)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'investment_plans': formatted_plans,
+                'best_plan_name': result['best_plan']['plan_name'] if result['best_plan'] else None,
+                'comparison_summary': result['comparison_summary']
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/capital-investment/evaluate')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def evaluate_capital_investment():
+    """設備投資案件を総合評価"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    initial_investment = request.args.get('initial_investment', type=float)
+    annual_cash_flows_str = request.args.get('annual_cash_flows', type=str)
+    discount_rate = request.args.get('discount_rate', type=float, default=6.0)
+    project_name = request.args.get('project_name', type=str, default='投資案件')
+    
+    if not initial_investment or not annual_cash_flows_str:
+        return jsonify({'error': 'パラメータが不足しています'}), 400
+    
+    try:
+        # カンマ区切りの文字列をリストに変換
+        annual_cash_flows = [float(x.strip()) for x in annual_cash_flows_str.split(',')]
+        
+        from ..utils.capital_investment_planner import evaluate_investment
+        
+        # 設備投資案件を評価
+        result = evaluate_investment(
+            initial_investment=initial_investment,
+            annual_cash_flows=annual_cash_flows,
+            discount_rate=discount_rate,
+            project_name=project_name
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'project_name': result['project_name'],
+                'initial_investment': result['initial_investment'],
+                'initial_investment_formatted': f"{result['initial_investment']:,.0f}円",
+                'npv': round(result['npv'], 2),
+                'npv_formatted': f"{result['npv']:,.0f}円",
+                'irr': round(result['irr'], 2) if not (result['irr'] != result['irr']) else None,
+                'irr_formatted': f"{result['irr']:.2f}%" if not (result['irr'] != result['irr']) else 'N/A',
+                'payback_period': round(result['payback_period'], 2),
+                'payback_period_formatted': f"{result['payback_period']:.1f}年",
+                'profitability_index': round(result['profitability_index'], 2),
+                'profitability_index_formatted': f"{result['profitability_index']:.2f}",
+                'total_cash_flow': result['total_cash_flow'],
+                'total_cash_flow_formatted': f"{result['total_cash_flow']:,.0f}円",
+                'net_profit': result['net_profit'],
+                'net_profit_formatted': f"{result['net_profit']:,.0f}円",
+                'recommendation': result['recommendation']
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/contribution-analysis/product', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def product_contribution_analysis():
+    """製品別貢献度分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data or 'products' not in data:
+        return jsonify({'error': 'productsが必要です'}), 400
+    
+    products = data['products']
+    
+    try:
+        from ..utils.product_contribution_analyzer import (
+            analyze_product_contribution,
+            format_product_contribution_for_ui,
+            rank_products_by_contribution,
+            identify_unprofitable_products
+        )
+        
+        # 製品別貢献度分析を実行
+        result = analyze_product_contribution(products)
+        
+        # UI表示用に整形
+        formatted_result = format_product_contribution_for_ui(result)
+        
+        # ランキングを生成
+        ranked_products = rank_products_by_contribution(result['products'])
+        
+        # 不採算製品を特定
+        unprofitable_products = identify_unprofitable_products(result['products'])
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'analysis': formatted_result,
+                'ranking': [
+                    {
+                        'rank': i + 1,
+                        'name': p['name'],
+                        'contribution_profit': p['contribution_profit'],
+                        'contribution_profit_formatted': f"{p['contribution_profit']:,.0f}円"
+                    }
+                    for i, p in enumerate(ranked_products)
+                ],
+                'unprofitable_products': [
+                    {
+                        'name': p['name'],
+                        'contribution_profit': p['contribution_profit'],
+                        'contribution_profit_formatted': f"{p['contribution_profit']:,.0f}円"
+                    }
+                    for p in unprofitable_products
+                ]
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/contribution-analysis/segment', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def segment_contribution_analysis():
+    """セグメント別貢献度分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data or 'segments' not in data:
+        return jsonify({'error': 'segmentsが必要です'}), 400
+    
+    segments = data['segments']
+    common_fixed_cost = data.get('common_fixed_cost', 0)
+    
+    try:
+        from ..utils.contribution_analyzer import (
+            analyze_product_mix,
+            rank_segments_by_contribution,
+            identify_unprofitable_segments
+        )
+        
+        # セグメント別貢献度分析を実行
+        result = analyze_product_mix(segments, common_fixed_cost)
+        
+        # ランキングを生成
+        ranked_segments = rank_segments_by_contribution(result['segments'])
+        
+        # 不採算セグメントを特定
+        unprofitable_segments = identify_unprofitable_segments(result['segments'])
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'segments': result['segments'],
+                'total': result['total'],
+                'ranking': [
+                    {
+                        'rank': i + 1,
+                        'name': s['name'],
+                        'contribution_margin': s['contribution_margin'],
+                        'contribution_margin_formatted': f"{s['contribution_margin']:,.0f}円"
+                    }
+                    for i, s in enumerate(ranked_segments)
+                ],
+                'unprofitable_segments': [
+                    {
+                        'name': s['name'],
+                        'segment_profit': s['segment_profit'],
+                        'segment_profit_formatted': f"{s['segment_profit']:,.0f}円"
+                    }
+                    for s in unprofitable_segments
+                ]
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/budget-management/multi-year-plan', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def create_multi_year_plan():
+    """多年度計画の作成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.multi_year_plan_manager import MultiYearPlanManager
+        
+        # 統合計画を作成
+        integrated_plan = MultiYearPlanManager.create_integrated_plan(
+            company_id=data.get('company_id'),
+            base_year=data.get('base_year'),
+            labor_cost_plans=data.get('labor_cost_plans', []),
+            capital_investment_plans=data.get('capital_investment_plans', []),
+            working_capital_plans=data.get('working_capital_plans', []),
+            financing_plans=data.get('financing_plans', [])
+        )
+        
+        # 計画の妥当性を検証
+        validation_result = MultiYearPlanManager.validate_plan(integrated_plan)
+        
+        # UI表示用に整形
+        formatted_plan = MultiYearPlanManager.format_plan_for_ui(integrated_plan)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'plan': formatted_plan,
+                'validation': validation_result
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/budget-management/continuous-simulation', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def run_continuous_simulation():
+    """連続財務シミュレーションの実行"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.continuous_financial_simulator import ContinuousFinancialSimulator
+        
+        # シミュレーションを実行
+        simulation_result = ContinuousFinancialSimulator.simulate_multi_year_financials(
+            base_financials=data.get('base_financials', {}),
+            integrated_plan=data.get('integrated_plan', {}),
+            sales_growth_rates=data.get('sales_growth_rates', []),
+            cost_of_sales_ratios=data.get('cost_of_sales_ratios', []),
+            sg_a_ratios=data.get('sg_a_ratios', [])
+        )
+        
+        # UI表示用に整形
+        formatted_result = ContinuousFinancialSimulator.format_simulation_for_ui(simulation_result)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/budget-management/variance-analysis', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def analyze_budget_variance():
+    """予実差異分析"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.budget_variance_analyzer import BudgetVarianceAnalyzer
+        
+        # 予実差異を分析
+        variance_result = BudgetVarianceAnalyzer.analyze_variance(
+            budget_data=data.get('budget_data', {}),
+            actual_data=data.get('actual_data', {}),
+            variance_threshold=data.get('variance_threshold', 5.0)
+        )
+        
+        # UI表示用に整形
+        formatted_result = BudgetVarianceAnalyzer.format_variance_for_ui(variance_result)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/budget-management/alerts', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def generate_budget_alerts():
+    """予算管理アラートの生成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.budget_variance_analyzer import BudgetVarianceAnalyzer
+        
+        # 包括的なアラートを生成
+        alerts_result = BudgetVarianceAnalyzer.generate_comprehensive_alerts(
+            budget_data=data.get('budget_data', {}),
+            actual_data=data.get('actual_data', {}),
+            simulation_result=data.get('simulation_result', {}),
+            variance_threshold=data.get('variance_threshold', 5.0),
+            minimum_cash_balance=data.get('minimum_cash_balance', 0),
+            minimum_dscr=data.get('minimum_dscr', 1.2)
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': alerts_result
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/individual-plans/labor-cost', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def create_multi_year_labor_cost_plan():
+    """多年度労務費計画の作成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.multi_year_labor_cost_planner import (
+            create_multi_year_labor_cost_plan,
+            format_multi_year_labor_cost_plan_for_ui
+        )
+        
+        # 多年度労務費計画を作成
+        multi_year_plan = create_multi_year_labor_cost_plan(
+            base_year=data.get('base_year'),
+            current_employee_count=data.get('current_employee_count'),
+            yearly_plans=data.get('yearly_plans', [])
+        )
+        
+        # UI表示用に整形
+        formatted_plan = format_multi_year_labor_cost_plan_for_ui(multi_year_plan)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_plan
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/individual-plans/capital-investment', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def create_multi_year_capital_investment_plan():
+    """多年度設備投資計画の作成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.multi_year_capital_investment_planner import (
+            create_multi_year_capital_investment_plan,
+            format_multi_year_capital_investment_plan_for_ui
+        )
+        
+        # 多年度設備投資計画を作成
+        multi_year_plan = create_multi_year_capital_investment_plan(
+            base_year=data.get('base_year'),
+            yearly_investments=data.get('yearly_investments', [])
+        )
+        
+        # UI表示用に整形
+        formatted_plan = format_multi_year_capital_investment_plan_for_ui(multi_year_plan)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_plan
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/individual-plans/working-capital', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def create_multi_year_working_capital_plan():
+    """多年度運転資金計画の作成"""
+    tenant_id = session.get('tenant_id')
+    if not tenant_id:
+        return jsonify({'error': 'テナントIDが見つかりません'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'データが必要です'}), 400
+    
+    try:
+        from ..utils.multi_year_working_capital_planner import (
+            create_multi_year_working_capital_plan,
+            format_multi_year_working_capital_plan_for_ui
+        )
+        
+        # 多年度運転資金計画を作成
+        multi_year_plan = create_multi_year_working_capital_plan(
+            base_year=data.get('base_year'),
+            yearly_plans=data.get('yearly_plans', [])
+        )
+        
+        # UI表示用に整形
+        formatted_plan = format_multi_year_working_capital_plan_for_ui(multi_year_plan)
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_plan
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

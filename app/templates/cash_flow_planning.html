@@ -60,6 +60,14 @@
                     </div>
                 </div>
                 
+                <h6 class="mt-4 mb-3">月次支出</h6>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="purchasePayment" class="form-label">仕入支払（円）</label>
+                        <input type="number" class="form-control" id="purchasePayment" value="4000000" required>
+                    </div>
+                </div>
+                
                 <h6 class="mt-4 mb-3">月次固定費</h6>
                 <div class="row">
                     <div class="col-md-3 mb-3">
@@ -240,8 +248,9 @@ document.getElementById('cashFlowForm').addEventListener('submit', async functio
     const monthlyTotalIncome = cashSales + accountsReceivableCollection + billCollection + otherIncome;
     const monthlySalesRevenue = Array(12).fill(monthlyTotalIncome);
     
-    // 仕入支払（簡易的に均等配分）
-    const monthlyPurchasePayment = Array(12).fill(5000000); // 年間仕入を12で割った値
+    // 仕入支払（ユーザー入力から取得）
+    const purchasePayment = parseFloat(document.getElementById('purchasePayment').value) || 0;
+    const monthlyPurchasePayment = Array(12).fill(purchasePayment);
     
     const data = {
         beginning_balance: parseFloat(document.getElementById('beginningBalance').value),
