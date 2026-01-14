@@ -285,6 +285,12 @@ def create_app() -> Flask:
     except Exception as e:
         print(f"⚠️ working_capital_forecast blueprint 登録エラー: {e}")
 
+    try:
+        from .blueprints.management_analysis_bp import bp as management_analysis_bp
+        app.register_blueprint(management_analysis_bp)
+    except Exception as e:
+        print(f"⚠️ management_analysis blueprint 登録エラー: {e}")
+
     # エラーハンドラ
     @app.errorhandler(404)
     def not_found(error):
