@@ -230,9 +230,17 @@ document.getElementById('cashFlowForm').addEventListener('submit', async functio
         return;
     }
     
-    // 実際の損益計算書データから売上収入と仕入支払を取得
-    // ここでは簡易的に均等配分
-    const monthlySalesRevenue = Array(12).fill(8333333); // 年間売上を12で割った値
+    // 収入項目を取得
+    const cashSales = parseFloat(document.getElementById('cashSales').value) || 0;
+    const accountsReceivableCollection = parseFloat(document.getElementById('accountsReceivableCollection').value) || 0;
+    const billCollection = parseFloat(document.getElementById('billCollection').value) || 0;
+    const otherIncome = parseFloat(document.getElementById('otherIncome').value) || 0;
+    
+    // 月次収入合計
+    const monthlyTotalIncome = cashSales + accountsReceivableCollection + billCollection + otherIncome;
+    const monthlySalesRevenue = Array(12).fill(monthlyTotalIncome);
+    
+    // 仕入支払（簡易的に均等配分）
     const monthlyPurchasePayment = Array(12).fill(5000000); // 年間仕入を12で割った値
     
     const data = {
