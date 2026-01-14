@@ -18,14 +18,31 @@ def create_tenant_admin_table():
         # テーブルを作成
         TTenantAdminTenant.__table__.create(engine, checkfirst=True)
         
-        return jsonify({
-            'success': True,
-            'message': 'T_テナント管理者_テナントテーブルを作成しました'
-        })
+        # テーブルが実際に作成されたか確認
+        db = SessionLocal()
+        try:
+            result = db.execute("SELECT COUNT(*) FROM \"T_テナント管理者_テナント\"")
+            count = result.scalar()
+            db.close()
+            
+            return jsonify({
+                'success': True,
+                'message': 'T_テナント管理者_テナントテーブルを作成しました',
+                'current_count': count
+            })
+        except Exception as verify_error:
+            db.close()
+            return jsonify({
+                'success': False,
+                'error': f'テーブル作成後の確認エラー: {str(verify_error)}'
+            }), 500
+            
     except Exception as e:
+        import traceback
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }), 500
 
 

@@ -133,5 +133,5 @@ class TTenantAdminTenant(Base):
     
     # ユニーク制約: 同じ管理者が同じテナントに複数回紐付けられないようにする
     __table_args__ = (
-        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'extend_existing': True}
+        {'extend_existing': True}
     )
