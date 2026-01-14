@@ -253,3 +253,122 @@ def calculate_trend_strength(r_squared: float) -> str:
         return "弱い"
     else:
         return "非常に弱い"
+
+
+def analyze_cost_structure(sales_data: List[float], cost_data: List[float]) -> Dict[str, Any]:
+    """
+    費用構造を分析し、固定費と変動費率を推定
+    
+    Args:
+        sales_data: 売上高のリスト
+        cost_data: 費用のリスト
+    
+    Returns:
+        固定費と変動費率を含む辞書
+    """
+    if len(sales_data) != len(cost_data):
+        raise ValueError("売上データと費用データの長さが一致しません")
+    
+    if len(sales_data) < 2:
+        raise ValueError("最小2つのデータポイントが必要です")
+    
+    # X軸（売上高）とY軸（費用）で回帰分析
+    # Y = aX + b
+    # a: 変動費率（Variable Cost Ratio）
+    # b: 固定費（Fixed Cost）
+    
+    variable_cost_ratio, fixed_cost = calculate_least_squares(sales_data, cost_data)
+    
+    # 決定係数を計算
+    r_squared = calculate_r_squared(sales_data, cost_data, variable_cost_ratio, fixed_cost)
+    
+    # 損益分岐点売上高を計算
+    # 損益分岐点 = 固定費 / (1 - 変動費率)
+    if variable_cost_ratio < 1.0:
+        break_even_sales = fixed_cost / (1 - variable_cost_ratio)
+    else:
+        break_even_sales = None  # 変動費率が100%以上の場合は損益分岐点なし
+    
+    return {
+        'variable_cost_ratio': variable_cost_ratio,
+        'fixed_cost': fixed_cost,
+        'r_squared': r_squared,
+        'break_even_sales': break_even_sales,
+        'equation': f'費用 = {variable_cost_ratio:.4f} × 売上高 + {fixed_cost:.2f}',
+        'interpretation': {
+            'variable_cost_ratio_percent': variable_cost_ratio * 100,
+            'contribution_margin_ratio': (1 - variable_cost_ratio) * 100 if variable_cost_ratio < 1.0 else 0
+        }
+    }
+
+
+def forecast_costs(historical_data: List[Dict[str, Any]], cost_metric: str, forecast_years: int = 5) -> Dict[str, Any]:
+    """
+    費用の予測を実行
+    
+    Args:
+        historical_data: 過去のデータのリスト
+            各データは以下のキーを持つ辞書:
+            - year: 年度（整数）
+            - sales: 売上高（数値）
+            - cost_metric: 費用項目（例: 'cost_of_sales', 'operating_expenses'）
+        cost_metric: 予測する費用項目名
+        forecast_years: 予測する年数
+    
+    Returns:
+        予測結果の辞書（固定費と変動費率を含む）
+    """
+    if not historical_data or len(historical_data) < 2:
+        raise ValueError("最小2年分の過去データが必要です")
+    
+    # データを年度順にソート
+    sorted_data = sorted(historical_data, key=lambda x: x['year'])
+    
+    # 売上高と費用を抽出
+    sales_data = [float(d['sales']) for d in sorted_data]
+    cost_data = [float(d.get(cost_metric, 0)) for d in sorted_data]
+    
+    # 費用構造を分析（固定費と変動費率）
+    cost_structure = analyze_cost_structure(sales_data, cost_data)
+    
+    # 売上高の予測
+    sales_forecast = forecast_sales(
+        [{'year': d['year'], 'sales': d['sales']} for d in sorted_data],
+        forecast_years
+    )
+    
+    # 費用の予測（売上高の予測値 × 変動費率 + 固定費）
+    future_cost_predictions = []
+    for sales_pred in sales_forecast['future_predictions']:
+        predicted_cost = (
+            sales_pred['predicted'] * cost_structure['variable_cost_ratio'] +
+            cost_structure['fixed_cost']
+        )
+        future_cost_predictions.append({
+            'year': sales_pred['year'],
+            'predicted_sales': sales_pred['predicted'],
+            'predicted_cost': max(0, predicted_cost)
+        })
+    
+    # 過去データの予測値を計算
+    historical_cost_predictions = []
+    for i, data in enumerate(sorted_data):
+        predicted_cost = (
+            data['sales'] * cost_structure['variable_cost_ratio'] +
+            cost_structure['fixed_cost']
+        )
+        actual_cost = data.get(cost_metric, 0)
+        historical_cost_predictions.append({
+            'year': data['year'],
+            'actual_sales': data['sales'],
+            'actual_cost': actual_cost,
+            'predicted_cost': predicted_cost,
+            'error': actual_cost - predicted_cost
+        })
+    
+    return {
+        'cost_structure': cost_structure,
+        'sales_forecast': sales_forecast,
+        'historical_cost_predictions': historical_cost_predictions,
+        'future_cost_predictions': future_cost_predictions
+    }
