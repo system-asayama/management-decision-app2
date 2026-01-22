@@ -132,30 +132,42 @@ def company_edit(company_id):
         db.close()
 
 
-@bp.route('/companies/<int:company_id>', methods=['DELETE'])
+@bp.route('/companies/<int:company_id>', methods=['GET', 'DELETE'])
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
-def company_delete(company_id):
-    """企業削除API"""
+def company_detail_or_delete(company_id):
+    """企業詳細ページ (GET) / 企業削除API (DELETE)"""
     tenant_id = session.get('tenant_id')
     if not tenant_id:
-        return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
-    
+        if request.method == 'DELETE':
+            return jsonify({'success': False, 'error': 'テナントIDが設定されていません'}), 400
+        return redirect(url_for('decision.index'))
+
     db = SessionLocal()
     try:
         company = db.query(Company).filter(
             Company.id == company_id,
             Company.tenant_id == tenant_id
         ).first()
-        
+
         if not company:
-            return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
-        
-        db.delete(company)
-        db.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        db.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+            if request.method == 'DELETE':
+                return jsonify({'success': False, 'error': '企業が見つかりません'}), 404
+            return redirect(url_for('decision.company_list'))
+
+        if request.method == 'DELETE':
+            try:
+                db.delete(company)
+                db.commit()
+                return jsonify({'success': True})
+            except Exception as e:
+                db.rollback()
+                return jsonify({'success': False, 'error': str(e)}), 500
+
+        fiscal_years = db.query(FiscalYear).filter(
+            FiscalYear.company_id == company_id
+        ).order_by(FiscalYear.year.desc()).all()
+
+        return render_template('company_detail.html', company=company, fiscal_years=fiscal_years)
     finally:
         db.close()
 

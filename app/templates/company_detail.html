@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}企業詳細{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2><i class="fas fa-building me-2"></i>企業詳細</h2>
+      <p class="text-muted">企業情報の詳細を確認できます。</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="/decision/companies/{{ company.id }}/edit" class="btn btn-warning">
+        <i class="fas fa-edit me-2"></i>編集
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>基本情報</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p class="mb-2"><strong>企業ID:</strong> {{ company.id }}</p>
+          <p class="mb-2"><strong>企業名:</strong> {{ company.name }}</p>
+          <p class="mb-2"><strong>業種:</strong> {{ company.industry or '-' }}</p>
+          <p class="mb-2"><strong>資本金:</strong> {{ '{:,}'.format(company.capital) if company.capital else '-' }} 円</p>
+          <p class="mb-2"><strong>従業員数:</strong> {{ company.employee_count or '-' }} 人</p>
+        </div>
+        <div class="col-md-6">
+          <p class="mb-2"><strong>設立年月日:</strong> {{ company.established_date.strftime('%Y年%m月%d日') if company.established_date else '-' }}</p>
+          <p class="mb-2"><strong>住所:</strong> {{ company.address or '-' }}</p>
+          <p class="mb-2"><strong>電話番号:</strong> {{ company.phone or '-' }}</p>
+          <p class="mb-2"><strong>メール:</strong> {{ company.email or '-' }}</p>
+          <p class="mb-2"><strong>Webサイト:</strong>
+            {% if company.website %}
+              <a href="{{ company.website }}" target="_blank" rel="noopener noreferrer">{{ company.website }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if company.representative %}
+      <p class="mt-3 mb-0"><strong>代表者:</strong> {{ company.representative }}</p>
+      {% endif %}
+
+      {% if company.notes %}
+      <hr>
+      <p class="mb-0"><strong>備考:</strong><br>{{ company.notes }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>会計年度</h5>
+      <a href="/decision/fiscal-years/new" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus me-2"></i>会計年度を追加
+      </a>
+    </div>
+    <div class="card-body">
+      {% if fiscal_years %}
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>年度</th>
+                <th>開始日</th>
+                <th>終了日</th>
+                <th>月数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fy in fiscal_years %}
+              <tr>
+                <td>{{ fy.year_name or (fy.year|string + '年度') }}</td>
+                <td>{{ fy.start_date.strftime('%Y-%m-%d') if fy.start_date else '-' }}</td>
+                <td>{{ fy.end_date.strftime('%Y-%m-%d') if fy.end_date else '-' }}</td>
+                <td>{{ fy.months or '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">会計年度が登録されていません。</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <a href="/decision/companies" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>企業一覧へ戻る
+    </a>
+
+    <button class="btn btn-danger" onclick="deleteCompany({{ company.id }}, '{{ company.name }}')">
+      <i class="fas fa-trash me-2"></i>削除
+    </button>
+  </div>
+</div>
+
+<script>
+function deleteCompany(id, name) {
+  if (confirm(`企業「${name}」を削除してもよろしいですか？`)) {
+    fetch(`/decision/companies/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = '/decision/companies';
+      } else {
+        alert('削除に失敗しました: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('削除に失敗しました: ' + error);
+    });
+  }
+}
+</script>
+{% endblock %}
