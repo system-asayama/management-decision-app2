@@ -54,12 +54,12 @@
                                         <strong>業種:</strong> {{ company.industry or '-' }}
                                     </p>
                                     <p class="mb-2">
-                                        <strong>資本金:</strong> {{ '{:,}'.format(company.capital) if company.capital else '-' }} 円
+                                        <strong>資本金:</strong> {{ company.capital|comma }} 円
                                     </p>
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-2">
-                                        <strong>従業員数:</strong> {{ company.employee_count or '-' }} 人
+                                        <strong>従業員数:</strong> {{ company.employee_count|comma }} 人
                                     </p>
                                     <p class="mb-2">
                                         <strong>設立年月日:</strong> {{ company.established_date.strftime('%Y年%m月%d日') if company.established_date else '-' }}

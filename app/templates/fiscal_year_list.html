@@ -62,7 +62,7 @@
                                         <strong>終了日:</strong> {{ fy.end_date.strftime('%Y年%m月%d日') if fy.end_date else '-' }}
                                     </p>
                                     <p class="mb-2">
-                                        <strong>月数:</strong> {{ fy.months or '-' }} ヶ月
+                                        <strong>月数:</strong> {{ fy.months|comma }} ヶ月
                                     </p>
                                     <p class="mb-2">
                                         <strong>作成日:</strong> {{ fy.created_at.strftime('%Y年%m月%d日') if fy.created_at else '-' }}

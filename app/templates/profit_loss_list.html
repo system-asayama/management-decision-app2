@@ -57,21 +57,21 @@
                                         <strong>会計年度:</strong> {{ pl.fiscal_year.year_name }}
                                     </p>
                                     <p class="mb-2">
-                                        <strong>売上高:</strong> <span class="text-primary">{{ "{:,}".format(pl.sales) }} 円</span>
+                                        <strong>売上高:</strong> <span class="text-primary">{{ pl.sales|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
-                                        <strong>売上原価:</strong> {{ "{:,}".format(pl.cost_of_sales) }} 円
+                                        <strong>売上原価:</strong> {{ pl.cost_of_sales|comma }} 円
                                     </p>
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-2">
-                                        <strong>営業利益:</strong> <span class="text-success">{{ "{:,}".format(pl.operating_income) }} 円</span>
+                                        <strong>営業利益:</strong> <span class="text-success">{{ pl.operating_income|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
-                                        <strong>経常利益:</strong> <span class="text-info">{{ "{:,}".format(pl.ordinary_income) }} 円</span>
+                                        <strong>経常利益:</strong> <span class="text-info">{{ pl.ordinary_income|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
-                                        <strong>当期純利益:</strong> <span class="text-warning">{{ "{:,}".format(pl.net_income) }} 円</span>
+                                        <strong>当期純利益:</strong> <span class="text-warning">{{ pl.net_income|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
                                         <strong>作成日:</strong> {{ pl.created_at.strftime('%Y年%m月%d日') }}

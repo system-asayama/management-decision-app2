@@ -53,6 +53,13 @@ def create_app() -> Flask:
     except Exception:
         pass
 
+    # 数値表示用フィルタ（カンマ区切り）
+    try:
+        from .utils.formatting import comma
+        app.jinja_env.filters["comma"] = comma
+    except Exception:
+        pass
+
     # CSRF トークンをテンプレートで使えるようにする
     @app.context_processor
     def inject_csrf():

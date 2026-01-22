@@ -26,8 +26,8 @@
           <p class="mb-2"><strong>企業ID:</strong> {{ company.id }}</p>
           <p class="mb-2"><strong>企業名:</strong> {{ company.name }}</p>
           <p class="mb-2"><strong>業種:</strong> {{ company.industry or '-' }}</p>
-          <p class="mb-2"><strong>資本金:</strong> {{ '{:,}'.format(company.capital) if company.capital else '-' }} 円</p>
-          <p class="mb-2"><strong>従業員数:</strong> {{ company.employee_count or '-' }} 人</p>
+          <p class="mb-2"><strong>資本金:</strong> {{ company.capital|comma }} 円</p>
+          <p class="mb-2"><strong>従業員数:</strong> {{ company.employee_count|comma }} 人</p>
         </div>
         <div class="col-md-6">
           <p class="mb-2"><strong>設立年月日:</strong> {{ company.established_date.strftime('%Y年%m月%d日') if company.established_date else '-' }}</p>
@@ -80,7 +80,7 @@
                 <td>{{ fy.year_name }}</td>
                 <td>{{ fy.start_date.strftime('%Y-%m-%d') if fy.start_date else '-' }}</td>
                 <td>{{ fy.end_date.strftime('%Y-%m-%d') if fy.end_date else '-' }}</td>
-                <td>{{ fy.months or '-' }}</td>
+                <td>{{ fy.months|comma }}</td>
               </tr>
               {% endfor %}
             </tbody>

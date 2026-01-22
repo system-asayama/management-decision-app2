@@ -57,27 +57,27 @@
                                         <strong>会計年度:</strong> {{ bs.fiscal_year.year_name }}
                                     </p>
                                     <p class="mb-2">
-                                        <strong>流動資産:</strong> {{ "{:,}".format(bs.current_assets) }} 円
+                                        <strong>流動資産:</strong> {{ bs.current_assets|comma }} 円
                                     </p>
                                     <p class="mb-2">
-                                        <strong>固定資産:</strong> {{ "{:,}".format(bs.fixed_assets) }} 円
+                                        <strong>固定資産:</strong> {{ bs.fixed_assets|comma }} 円
                                     </p>
                                     <p class="mb-2">
-                                        <strong>総資産:</strong> <span class="text-primary fw-bold">{{ "{:,}".format(bs.total_assets) }} 円</span>
+                                        <strong>総資産:</strong> <span class="text-primary fw-bold">{{ bs.total_assets|comma }} 円</span>
                                     </p>
                                 </div>
                                 <div class="col-md-6">
                                     <p class="mb-2">
-                                        <strong>流動負債:</strong> {{ "{:,}".format(bs.current_liabilities) }} 円
+                                        <strong>流動負債:</strong> {{ bs.current_liabilities|comma }} 円
                                     </p>
                                     <p class="mb-2">
-                                        <strong>固定負債:</strong> {{ "{:,}".format(bs.fixed_liabilities) }} 円
+                                        <strong>固定負債:</strong> {{ bs.fixed_liabilities|comma }} 円
                                     </p>
                                     <p class="mb-2">
-                                        <strong>総負債:</strong> <span class="text-danger fw-bold">{{ "{:,}".format(bs.total_liabilities) }} 円</span>
+                                        <strong>総負債:</strong> <span class="text-danger fw-bold">{{ bs.total_liabilities|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
-                                        <strong>純資産:</strong> <span class="text-success fw-bold">{{ "{:,}".format(bs.total_equity) }} 円</span>
+                                        <strong>純資産:</strong> <span class="text-success fw-bold">{{ bs.total_equity|comma }} 円</span>
                                     </p>
                                     <p class="mb-2">
                                         <strong>作成日:</strong> {{ bs.created_at.strftime('%Y年%m月%d日') }}
