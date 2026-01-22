@@ -109,6 +109,9 @@ def run_migrations():
             # T_管理者_店舗テーブルにオーナーと管理権限カラムを追加
             ("T_管理者_店舗", "is_owner", "INTEGER DEFAULT 0"),
             ("T_管理者_店舗", "can_manage_admins", "INTEGER DEFAULT 0"),
+            # 経営意思決定アプリ（SQLAlchemy）: balance_sheets に担保力用カラムを追加
+            ("balance_sheets", "land_market_value", "INTEGER DEFAULT 0 NOT NULL"),
+            ("balance_sheets", "securities_market_value", "INTEGER DEFAULT 0 NOT NULL"),
         ]
         
         added_count = 0
