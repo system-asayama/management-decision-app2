@@ -95,13 +95,18 @@
     // Strip commas just before submit
     const forms = new Set(inputs.map((i) => i.form).filter(Boolean));
     forms.forEach((form) => {
-      form.addEventListener("submit", function () {
+      // Use capture phase so this runs before other submit handlers (including ones that do fetch + preventDefault).
+      form.addEventListener(
+        "submit",
+        function () {
         inputs
           .filter((i) => i.form === form)
           .forEach((i) => {
             i.value = stripCommas(i.value);
           });
-      });
+        },
+        true
+      );
     });
   }
 

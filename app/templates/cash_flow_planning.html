@@ -32,11 +32,11 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="beginningBalance" class="form-label">期首残高（円）</label>
-                        <input type="number" class="form-control" id="beginningBalance" value="10000000" required>
+                        <input type="text" class="form-control js-comma-int" id="beginningBalance" value="10000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="minimumBalance" class="form-label">最低必要残高（円）</label>
-                        <input type="number" class="form-control" id="minimumBalance" value="1000000" required>
+                        <input type="text" class="form-control js-comma-int" id="minimumBalance" value="1000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
                 
@@ -44,19 +44,19 @@
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label for="cashSales" class="form-label">現金売上（円）</label>
-                        <input type="number" class="form-control" id="cashSales" value="5000000" required>
+                        <input type="text" class="form-control js-comma-int" id="cashSales" value="5000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="accountsReceivableCollection" class="form-label">売掛金回収（円）</label>
-                        <input type="number" class="form-control" id="accountsReceivableCollection" value="3000000" required>
+                        <input type="text" class="form-control js-comma-int" id="accountsReceivableCollection" value="3000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="billCollection" class="form-label">手形回収（円）</label>
-                        <input type="number" class="form-control" id="billCollection" value="0">
+                        <input type="text" class="form-control js-comma-int" id="billCollection" value="0" inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="otherIncome" class="form-label">その他現金収入（円）</label>
-                        <input type="number" class="form-control" id="otherIncome" value="0">
+                        <input type="text" class="form-control js-comma-int" id="otherIncome" value="0" inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
                 
@@ -64,7 +64,7 @@
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label for="purchasePayment" class="form-label">仕入支払（円）</label>
-                        <input type="number" class="form-control" id="purchasePayment" value="4000000" required>
+                        <input type="text" class="form-control js-comma-int" id="purchasePayment" value="4000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
                 
@@ -72,26 +72,26 @@
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label for="personnelCost" class="form-label">人件費（円）</label>
-                        <input type="number" class="form-control" id="personnelCost" value="3000000" required>
+                        <input type="text" class="form-control js-comma-int" id="personnelCost" value="3000000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="rent" class="form-label">賃借料（円）</label>
-                        <input type="number" class="form-control" id="rent" value="500000" required>
+                        <input type="text" class="form-control js-comma-int" id="rent" value="500000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="utilities" class="form-label">水道光熱費（円）</label>
-                        <input type="number" class="form-control" id="utilities" value="200000" required>
+                        <input type="text" class="form-control js-comma-int" id="utilities" value="200000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="otherExpenses" class="form-label">その他経費（円）</label>
-                        <input type="number" class="form-control" id="otherExpenses" value="500000" required>
+                        <input type="text" class="form-control js-comma-int" id="otherExpenses" value="500000" required inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="loanRepayment" class="form-label">月次借入金返済額（円）</label>
-                        <input type="number" class="form-control" id="loanRepayment" value="0">
+                        <input type="text" class="form-control js-comma-int" id="loanRepayment" value="0" inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="taxPaymentMonth" class="form-label">税金支払月</label>
@@ -104,7 +104,7 @@
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="taxPaymentAmount" class="form-label">税金支払額（円）</label>
-                        <input type="number" class="form-control" id="taxPaymentAmount" value="0">
+                        <input type="text" class="form-control js-comma-int" id="taxPaymentAmount" value="0" inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
                 
@@ -159,7 +159,7 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="financingAmount" class="form-label">調達額（円）</label>
-                                <input type="number" class="form-control" id="financingAmount" required>
+                                <input type="text" class="form-control js-comma-int" id="financingAmount" required inputmode="numeric" pattern="[0-9,]*">
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="financingMonth" class="form-label">調達月</label>
@@ -231,6 +231,12 @@ document.getElementById('companySelect').addEventListener('change', async functi
 // 資金繰り計画作成フォーム送信
 document.getElementById('cashFlowForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    function parseMoney(value) {
+        const s = String(value || '').replace(/,/g, '').trim();
+        const n = parseFloat(s || '0');
+        return isNaN(n) ? 0 : n;
+    }
     
     const fiscalYearId = document.getElementById('fiscalYearSelect').value;
     if (!fiscalYearId) {
@@ -239,31 +245,31 @@ document.getElementById('cashFlowForm').addEventListener('submit', async functio
     }
     
     // 収入項目を取得
-    const cashSales = parseFloat(document.getElementById('cashSales').value) || 0;
-    const accountsReceivableCollection = parseFloat(document.getElementById('accountsReceivableCollection').value) || 0;
-    const billCollection = parseFloat(document.getElementById('billCollection').value) || 0;
-    const otherIncome = parseFloat(document.getElementById('otherIncome').value) || 0;
+    const cashSales = parseMoney(document.getElementById('cashSales').value);
+    const accountsReceivableCollection = parseMoney(document.getElementById('accountsReceivableCollection').value);
+    const billCollection = parseMoney(document.getElementById('billCollection').value);
+    const otherIncome = parseMoney(document.getElementById('otherIncome').value);
     
     // 月次収入合計
     const monthlyTotalIncome = cashSales + accountsReceivableCollection + billCollection + otherIncome;
     const monthlySalesRevenue = Array(12).fill(monthlyTotalIncome);
     
     // 仕入支払（ユーザー入力から取得）
-    const purchasePayment = parseFloat(document.getElementById('purchasePayment').value) || 0;
+    const purchasePayment = parseMoney(document.getElementById('purchasePayment').value);
     const monthlyPurchasePayment = Array(12).fill(purchasePayment);
     
     const data = {
-        beginning_balance: parseFloat(document.getElementById('beginningBalance').value),
-        minimum_balance: parseFloat(document.getElementById('minimumBalance').value),
+        beginning_balance: parseMoney(document.getElementById('beginningBalance').value),
+        minimum_balance: parseMoney(document.getElementById('minimumBalance').value),
         monthly_sales_revenue: monthlySalesRevenue,
         monthly_purchase_payment: monthlyPurchasePayment,
-        monthly_personnel_cost: parseFloat(document.getElementById('personnelCost').value),
-        monthly_rent: parseFloat(document.getElementById('rent').value),
-        monthly_utilities: parseFloat(document.getElementById('utilities').value),
-        monthly_other_expenses: parseFloat(document.getElementById('otherExpenses').value),
-        loan_repayment: parseFloat(document.getElementById('loanRepayment').value),
+        monthly_personnel_cost: parseMoney(document.getElementById('personnelCost').value),
+        monthly_rent: parseMoney(document.getElementById('rent').value),
+        monthly_utilities: parseMoney(document.getElementById('utilities').value),
+        monthly_other_expenses: parseMoney(document.getElementById('otherExpenses').value),
+        loan_repayment: parseMoney(document.getElementById('loanRepayment').value),
         tax_payment_month: document.getElementById('taxPaymentMonth').value ? parseInt(document.getElementById('taxPaymentMonth').value) : null,
-        tax_payment_amount: parseFloat(document.getElementById('taxPaymentAmount').value)
+        tax_payment_amount: parseMoney(document.getElementById('taxPaymentAmount').value)
     };
     
     try {
@@ -338,7 +344,7 @@ function displayCashFlowPlan(result) {
         `;
         
         // 資金調達額のデフォルト値を設定
-        document.getElementById('financingAmount').value = Math.ceil(result.required_financing);
+        document.getElementById('financingAmount').value = Math.ceil(result.required_financing).toLocaleString('ja-JP');
         document.getElementById('financingMonth').value = result.shortage_months[0].month;
     } else {
         document.getElementById('shortageSection').style.display = 'none';
@@ -402,6 +408,12 @@ function displayCashFlowChart(cashFlowPlan) {
 // 資金調達シミュレーション
 document.getElementById('financingForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    function parseMoney(value) {
+        const s = String(value || '').replace(/,/g, '').trim();
+        const n = parseFloat(s || '0');
+        return isNaN(n) ? 0 : n;
+    }
     
     if (!currentCashFlowPlan) {
         alert('先に資金繰り計画を作成してください');
@@ -410,7 +422,7 @@ document.getElementById('financingForm').addEventListener('submit', async functi
     
     const data = {
         cash_flow_plan: currentCashFlowPlan,
-        financing_amount: parseFloat(document.getElementById('financingAmount').value),
+        financing_amount: parseMoney(document.getElementById('financingAmount').value),
         financing_month: parseInt(document.getElementById('financingMonth').value),
         interest_rate: parseFloat(document.getElementById('interestRate').value) / 100
     };
