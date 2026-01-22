@@ -77,7 +77,7 @@
             <tbody>
               {% for fy in fiscal_years %}
               <tr>
-                <td>{{ fy.year_name or (fy.year|string + '年度') }}</td>
+                <td>{{ fy.year_name }}</td>
                 <td>{{ fy.start_date.strftime('%Y-%m-%d') if fy.start_date else '-' }}</td>
                 <td>{{ fy.end_date.strftime('%Y-%m-%d') if fy.end_date else '-' }}</td>
                 <td>{{ fy.months or '-' }}</td>

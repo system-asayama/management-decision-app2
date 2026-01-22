@@ -15,10 +15,18 @@ def create_fiscal_year():
     """会計年度を作成"""
     data = request.get_json()
     
-    required_fields = ['company_id', 'year', 'start_date', 'end_date']
+    required_fields = ['company_id', 'start_date', 'end_date']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'{field}は必須です'}), 400
+
+    # year_name はDBスキーマ上必須。互換性のため year も受け付ける。
+    year_name = data.get('year_name')
+    if not year_name:
+        legacy_year = data.get('year')
+        if legacy_year is None:
+            return jsonify({'error': 'year_name（または year）は必須です'}), 400
+        year_name = f"{legacy_year}年度"
     
     db = SessionLocal()
     try:
@@ -28,12 +36,12 @@ def create_fiscal_year():
             return jsonify({'error': '企業が見つかりません'}), 404
         
         # 日付のパース
-        start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
-        end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+        start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00')).date()
+        end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00')).date()
         
         fiscal_year = FiscalYear(
             company_id=data['company_id'],
-            year=data['year'],
+            year_name=year_name,
             start_date=start_date,
             end_date=end_date
         )
@@ -44,7 +52,8 @@ def create_fiscal_year():
         return jsonify({
             'id': fiscal_year.id,
             'company_id': fiscal_year.company_id,
-            'year': fiscal_year.year,
+            'year': fiscal_year.start_date.year if fiscal_year.start_date else None,
+            'year_name': fiscal_year.year_name,
             'start_date': fiscal_year.start_date.isoformat(),
             'end_date': fiscal_year.end_date.isoformat(),
             'created_at': fiscal_year.created_at.isoformat(),
@@ -64,12 +73,13 @@ def list_fiscal_years_by_company(company_id):
     try:
         fiscal_years = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
-        ).order_by(FiscalYear.year.desc()).all()
+        ).order_by(FiscalYear.start_date.desc()).all()
         
         return jsonify([{
             'id': fy.id,
             'company_id': fy.company_id,
-            'year': fy.year,
+            'year': fy.start_date.year if fy.start_date else None,
+            'year_name': fy.year_name,
             'start_date': fy.start_date.isoformat(),
             'end_date': fy.end_date.isoformat(),
             'created_at': fy.created_at.isoformat(),
@@ -94,7 +104,8 @@ def get_fiscal_year(fiscal_year_id):
         return jsonify({
             'id': fiscal_year.id,
             'company_id': fiscal_year.company_id,
-            'year': fiscal_year.year,
+            'year': fiscal_year.start_date.year if fiscal_year.start_date else None,
+            'year_name': fiscal_year.year_name,
             'start_date': fiscal_year.start_date.isoformat(),
             'end_date': fiscal_year.end_date.isoformat(),
             'created_at': fiscal_year.created_at.isoformat(),
@@ -119,12 +130,14 @@ def update_fiscal_year(fiscal_year_id):
             return jsonify({'error': '会計年度が見つかりません'}), 404
         
         # 更新可能なフィールド
-        if 'year' in data:
-            fiscal_year.year = data['year']
+        if 'year_name' in data:
+            fiscal_year.year_name = data['year_name']
+        elif 'year' in data:
+            fiscal_year.year_name = f"{data['year']}年度"
         if 'start_date' in data:
-            fiscal_year.start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00'))
+            fiscal_year.start_date = datetime.fromisoformat(data['start_date'].replace('Z', '+00:00')).date()
         if 'end_date' in data:
-            fiscal_year.end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00'))
+            fiscal_year.end_date = datetime.fromisoformat(data['end_date'].replace('Z', '+00:00')).date()
         
         fiscal_year.updated_at = datetime.now()
         db.commit()
@@ -133,7 +146,8 @@ def update_fiscal_year(fiscal_year_id):
         return jsonify({
             'id': fiscal_year.id,
             'company_id': fiscal_year.company_id,
-            'year': fiscal_year.year,
+            'year': fiscal_year.start_date.year if fiscal_year.start_date else None,
+            'year_name': fiscal_year.year_name,
             'start_date': fiscal_year.start_date.isoformat(),
             'end_date': fiscal_year.end_date.isoformat(),
             'created_at': fiscal_year.created_at.isoformat(),

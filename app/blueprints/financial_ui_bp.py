@@ -44,7 +44,7 @@ def dashboard():
                 # 最新の会計年度を取得
                 latest_fiscal_year = db.query(FiscalYear).filter(
                     FiscalYear.company_id == company_id
-                ).order_by(FiscalYear.year.desc()).first()
+                ).order_by(FiscalYear.start_date.desc()).first()
                 
                 if latest_fiscal_year:
                     # P/Lデータ
@@ -82,7 +82,7 @@ def dashboard():
                 # 複数年度比較データ
                 fiscal_years = db.query(FiscalYear).filter(
                     FiscalYear.company_id == company_id
-                ).order_by(FiscalYear.year.desc()).limit(3).all()
+                ).order_by(FiscalYear.start_date.desc()).limit(3).all()
                 
                 if fiscal_years:
                     years = []
@@ -95,7 +95,7 @@ def dashboard():
                         ).first()
                         
                         if pl:
-                            years.append(f"{fy.year}年度")
+                            years.append(fy.year_name)
                             sales_data.append(pl.sales / 1000000)  # 百万円単位
                             income_data.append(pl.ordinary_income / 1000000)
                     
@@ -170,7 +170,7 @@ def fiscal_years():
             selected_company = db.query(Company).filter(Company.id == company_id).first()
             fiscal_years = db.query(FiscalYear).filter(
                 FiscalYear.company_id == company_id
-            ).order_by(FiscalYear.year.desc()).all()
+            ).order_by(FiscalYear.start_date.desc()).all()
         
         return render_template(
             'financial_fiscal_years.html',
@@ -200,7 +200,7 @@ def pl_input():
             selected_company = db.query(Company).filter(Company.id == company_id).first()
             fiscal_years = db.query(FiscalYear).filter(
                 FiscalYear.company_id == company_id
-            ).order_by(FiscalYear.year.desc()).all()
+            ).order_by(FiscalYear.start_date.desc()).all()
             
             if fiscal_year_id:
                 pl_data = db.query(ProfitLossStatement).filter(
@@ -237,7 +237,7 @@ def bs_input():
             selected_company = db.query(Company).filter(Company.id == company_id).first()
             fiscal_years = db.query(FiscalYear).filter(
                 FiscalYear.company_id == company_id
-            ).order_by(FiscalYear.year.desc()).all()
+            ).order_by(FiscalYear.start_date.desc()).all()
             
             if fiscal_year_id:
                 bs_data = db.query(BalanceSheet).filter(

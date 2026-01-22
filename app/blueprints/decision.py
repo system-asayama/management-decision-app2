@@ -165,7 +165,7 @@ def company_detail_or_delete(company_id):
 
         fiscal_years = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
-        ).order_by(FiscalYear.year.desc()).all()
+        ).order_by(FiscalYear.start_date.desc()).all()
 
         return render_template('company_detail.html', company=company, fiscal_years=fiscal_years)
     finally:

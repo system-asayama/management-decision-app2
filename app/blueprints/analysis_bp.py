@@ -124,11 +124,11 @@ def calculate_growth_indicators(fiscal_year_id):
         if not fiscal_year:
             return jsonify({'error': '会計年度が見つかりません'}), 404
         
-        # 前年度の会計年度を取得
+        # 前年度の会計年度を取得（開始日が直近で過去のもの）
         previous_fiscal_year = db.query(FiscalYear).filter(
             FiscalYear.company_id == fiscal_year.company_id,
-            FiscalYear.year == fiscal_year.year - 1
-        ).first()
+            FiscalYear.start_date < fiscal_year.start_date
+        ).order_by(FiscalYear.start_date.desc()).first()
         
         if not previous_fiscal_year:
             return jsonify({'error': '前年度のデータが見つかりません'}), 404
@@ -255,8 +255,8 @@ def calculate_all_indicators(fiscal_year_id):
         # 前年度のデータ（成長力計算用）
         previous_fiscal_year = db.query(FiscalYear).filter(
             FiscalYear.company_id == fiscal_year.company_id,
-            FiscalYear.year == fiscal_year.year - 1
-        ).first()
+            FiscalYear.start_date < fiscal_year.start_date
+        ).order_by(FiscalYear.start_date.desc()).first()
         
         previous_data = None
         if previous_fiscal_year:

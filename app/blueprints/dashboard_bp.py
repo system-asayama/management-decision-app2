@@ -23,7 +23,7 @@ def get_dashboard_summary(company_id):
         # 最新の会計年度を取得
         latest_fiscal_year = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
-        ).order_by(desc(FiscalYear.year)).first()
+        ).order_by(desc(FiscalYear.start_date)).first()
         
         if not latest_fiscal_year:
             return jsonify({
@@ -59,7 +59,8 @@ def get_dashboard_summary(company_id):
             },
             'latest_fiscal_year': {
                 'id': latest_fiscal_year.id,
-                'year': latest_fiscal_year.year,
+                'year': latest_fiscal_year.start_date.year if latest_fiscal_year.start_date else None,
+                'year_name': latest_fiscal_year.year_name,
                 'start_date': latest_fiscal_year.start_date.isoformat(),
                 'end_date': latest_fiscal_year.end_date.isoformat()
             },
@@ -90,7 +91,7 @@ def get_multi_year_comparison(company_id):
         # 最新3年度を取得
         fiscal_years = db.query(FiscalYear).filter(
             FiscalYear.company_id == company_id
-        ).order_by(desc(FiscalYear.year)).limit(3).all()
+        ).order_by(desc(FiscalYear.start_date)).limit(3).all()
         
         if not fiscal_years:
             return jsonify({'error': '会計年度が見つかりません'}), 404
@@ -108,7 +109,8 @@ def get_multi_year_comparison(company_id):
             comparison_data.append({
                 'fiscal_year': {
                     'id': fy.id,
-                    'year': fy.year,
+                    'year': fy.start_date.year if fy.start_date else None,
+                    'year_name': fy.year_name,
                     'start_date': fy.start_date.isoformat(),
                     'end_date': fy.end_date.isoformat()
                 },
