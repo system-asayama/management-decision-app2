@@ -4,6 +4,7 @@
 
 from flask import Blueprint, render_template, redirect, url_for, session, request, jsonify
 from ..utils.decorators import require_roles, ROLES
+from ..utils.formatting import parse_int, parse_int_or_none
 from ..db import SessionLocal
 from ..models_decision import Company, FiscalYear, ProfitLossStatement, BalanceSheet
 from datetime import datetime
@@ -70,8 +71,8 @@ def company_new():
                 tenant_id=tenant_id,
                 name=request.form.get('name'),
                 industry=request.form.get('industry') or None,
-                capital=int(request.form.get('capital')) if request.form.get('capital') else None,
-                employee_count=int(request.form.get('employee_count')) if request.form.get('employee_count') else None,
+                capital=parse_int_or_none(request.form.get('capital')),
+                employee_count=parse_int_or_none(request.form.get('employee_count')),
                 established_date=datetime.strptime(request.form.get('established_date'), '%Y-%m-%d').date() if request.form.get('established_date') else None,
                 address=request.form.get('address') or None,
                 phone=request.form.get('phone') or None,
@@ -113,8 +114,8 @@ def company_edit(company_id):
             try:
                 company.name = request.form.get('name')
                 company.industry = request.form.get('industry') or None
-                company.capital = int(request.form.get('capital')) if request.form.get('capital') else None
-                company.employee_count = int(request.form.get('employee_count')) if request.form.get('employee_count') else None
+                company.capital = parse_int_or_none(request.form.get('capital'))
+                company.employee_count = parse_int_or_none(request.form.get('employee_count'))
                 company.established_date = datetime.strptime(request.form.get('established_date'), '%Y-%m-%d').date() if request.form.get('established_date') else None
                 company.address = request.form.get('address') or None
                 company.phone = request.form.get('phone') or None
@@ -213,7 +214,7 @@ def fiscal_year_new():
                     year_name=request.form.get('year_name'),
                     start_date=datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date(),
                     end_date=datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date(),
-                    months=int(request.form.get('months')) if request.form.get('months') else 12,
+                    months=parse_int(request.form.get('months'), default=12),
                     notes=request.form.get('notes') or None
                 )
                 db.add(fiscal_year)
@@ -253,7 +254,7 @@ def fiscal_year_edit(fiscal_year_id):
                 fiscal_year.year_name = request.form.get('year_name')
                 fiscal_year.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
                 fiscal_year.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
-                fiscal_year.months = int(request.form.get('months')) if request.form.get('months') else 12
+                fiscal_year.months = parse_int(request.form.get('months'), default=12)
                 fiscal_year.notes = request.form.get('notes') or None
                 db.commit()
                 return redirect(url_for('decision.fiscal_year_list'))
@@ -336,19 +337,19 @@ def profit_loss_new():
             try:
                 profit_loss = ProfitLossStatement(
                     fiscal_year_id=int(request.form.get('fiscal_year_id')),
-                    sales=int(request.form.get('sales') or 0),
-                    cost_of_sales=int(request.form.get('cost_of_sales') or 0),
-                    gross_profit=int(request.form.get('gross_profit') or 0),
-                    operating_expenses=int(request.form.get('operating_expenses') or 0),
-                    operating_income=int(request.form.get('operating_income') or 0),
-                    non_operating_income=int(request.form.get('non_operating_income') or 0),
-                    non_operating_expenses=int(request.form.get('non_operating_expenses') or 0),
-                    ordinary_income=int(request.form.get('ordinary_income') or 0),
-                    extraordinary_income=int(request.form.get('extraordinary_income') or 0),
-                    extraordinary_loss=int(request.form.get('extraordinary_loss') or 0),
-                    income_before_tax=int(request.form.get('income_before_tax') or 0),
-                    income_tax=int(request.form.get('income_tax') or 0),
-                    net_income=int(request.form.get('net_income') or 0)
+                    sales=parse_int(request.form.get('sales'), default=0),
+                    cost_of_sales=parse_int(request.form.get('cost_of_sales'), default=0),
+                    gross_profit=parse_int(request.form.get('gross_profit'), default=0),
+                    operating_expenses=parse_int(request.form.get('operating_expenses'), default=0),
+                    operating_income=parse_int(request.form.get('operating_income'), default=0),
+                    non_operating_income=parse_int(request.form.get('non_operating_income'), default=0),
+                    non_operating_expenses=parse_int(request.form.get('non_operating_expenses'), default=0),
+                    ordinary_income=parse_int(request.form.get('ordinary_income'), default=0),
+                    extraordinary_income=parse_int(request.form.get('extraordinary_income'), default=0),
+                    extraordinary_loss=parse_int(request.form.get('extraordinary_loss'), default=0),
+                    income_before_tax=parse_int(request.form.get('income_before_tax'), default=0),
+                    income_tax=parse_int(request.form.get('income_tax'), default=0),
+                    net_income=parse_int(request.form.get('net_income'), default=0)
                 )
                 db.add(profit_loss)
                 db.commit()
@@ -391,19 +392,19 @@ def profit_loss_edit(id):
         if request.method == 'POST':
             try:
                 profit_loss.fiscal_year_id = int(request.form.get('fiscal_year_id'))
-                profit_loss.sales = int(request.form.get('sales') or 0)
-                profit_loss.cost_of_sales = int(request.form.get('cost_of_sales') or 0)
-                profit_loss.gross_profit = int(request.form.get('gross_profit') or 0)
-                profit_loss.operating_expenses = int(request.form.get('operating_expenses') or 0)
-                profit_loss.operating_income = int(request.form.get('operating_income') or 0)
-                profit_loss.non_operating_income = int(request.form.get('non_operating_income') or 0)
-                profit_loss.non_operating_expenses = int(request.form.get('non_operating_expenses') or 0)
-                profit_loss.ordinary_income = int(request.form.get('ordinary_income') or 0)
-                profit_loss.extraordinary_income = int(request.form.get('extraordinary_income') or 0)
-                profit_loss.extraordinary_loss = int(request.form.get('extraordinary_loss') or 0)
-                profit_loss.income_before_tax = int(request.form.get('income_before_tax') or 0)
-                profit_loss.income_tax = int(request.form.get('income_tax') or 0)
-                profit_loss.net_income = int(request.form.get('net_income') or 0)
+                profit_loss.sales = parse_int(request.form.get('sales'), default=0)
+                profit_loss.cost_of_sales = parse_int(request.form.get('cost_of_sales'), default=0)
+                profit_loss.gross_profit = parse_int(request.form.get('gross_profit'), default=0)
+                profit_loss.operating_expenses = parse_int(request.form.get('operating_expenses'), default=0)
+                profit_loss.operating_income = parse_int(request.form.get('operating_income'), default=0)
+                profit_loss.non_operating_income = parse_int(request.form.get('non_operating_income'), default=0)
+                profit_loss.non_operating_expenses = parse_int(request.form.get('non_operating_expenses'), default=0)
+                profit_loss.ordinary_income = parse_int(request.form.get('ordinary_income'), default=0)
+                profit_loss.extraordinary_income = parse_int(request.form.get('extraordinary_income'), default=0)
+                profit_loss.extraordinary_loss = parse_int(request.form.get('extraordinary_loss'), default=0)
+                profit_loss.income_before_tax = parse_int(request.form.get('income_before_tax'), default=0)
+                profit_loss.income_tax = parse_int(request.form.get('income_tax'), default=0)
+                profit_loss.net_income = parse_int(request.form.get('net_income'), default=0)
                 db.commit()
                 return redirect(url_for('decision.profit_loss_list'))
             except Exception as e:
@@ -487,15 +488,15 @@ def balance_sheet_new():
             try:
                 balance_sheet = BalanceSheet(
                     fiscal_year_id=int(request.form.get('fiscal_year_id')),
-                    current_assets=int(request.form.get('current_assets') or 0),
-                    fixed_assets=int(request.form.get('fixed_assets') or 0),
-                    total_assets=int(request.form.get('total_assets') or 0),
-                    current_liabilities=int(request.form.get('current_liabilities') or 0),
-                    fixed_liabilities=int(request.form.get('fixed_liabilities') or 0),
-                    total_liabilities=int(request.form.get('total_liabilities') or 0),
-                    capital=int(request.form.get('capital') or 0),
-                    retained_earnings=int(request.form.get('retained_earnings') or 0),
-                    total_equity=int(request.form.get('total_equity') or 0)
+                    current_assets=parse_int(request.form.get('current_assets'), default=0),
+                    fixed_assets=parse_int(request.form.get('fixed_assets'), default=0),
+                    total_assets=parse_int(request.form.get('total_assets'), default=0),
+                    current_liabilities=parse_int(request.form.get('current_liabilities'), default=0),
+                    fixed_liabilities=parse_int(request.form.get('fixed_liabilities'), default=0),
+                    total_liabilities=parse_int(request.form.get('total_liabilities'), default=0),
+                    capital=parse_int(request.form.get('capital'), default=0),
+                    retained_earnings=parse_int(request.form.get('retained_earnings'), default=0),
+                    total_equity=parse_int(request.form.get('total_equity'), default=0)
                 )
                 db.add(balance_sheet)
                 db.commit()
@@ -538,15 +539,15 @@ def balance_sheet_edit(id):
         if request.method == 'POST':
             try:
                 balance_sheet.fiscal_year_id = int(request.form.get('fiscal_year_id'))
-                balance_sheet.current_assets = int(request.form.get('current_assets') or 0)
-                balance_sheet.fixed_assets = int(request.form.get('fixed_assets') or 0)
-                balance_sheet.total_assets = int(request.form.get('total_assets') or 0)
-                balance_sheet.current_liabilities = int(request.form.get('current_liabilities') or 0)
-                balance_sheet.fixed_liabilities = int(request.form.get('fixed_liabilities') or 0)
-                balance_sheet.total_liabilities = int(request.form.get('total_liabilities') or 0)
-                balance_sheet.capital = int(request.form.get('capital') or 0)
-                balance_sheet.retained_earnings = int(request.form.get('retained_earnings') or 0)
-                balance_sheet.total_equity = int(request.form.get('total_equity') or 0)
+                balance_sheet.current_assets = parse_int(request.form.get('current_assets'), default=0)
+                balance_sheet.fixed_assets = parse_int(request.form.get('fixed_assets'), default=0)
+                balance_sheet.total_assets = parse_int(request.form.get('total_assets'), default=0)
+                balance_sheet.current_liabilities = parse_int(request.form.get('current_liabilities'), default=0)
+                balance_sheet.fixed_liabilities = parse_int(request.form.get('fixed_liabilities'), default=0)
+                balance_sheet.total_liabilities = parse_int(request.form.get('total_liabilities'), default=0)
+                balance_sheet.capital = parse_int(request.form.get('capital'), default=0)
+                balance_sheet.retained_earnings = parse_int(request.form.get('retained_earnings'), default=0)
+                balance_sheet.total_equity = parse_int(request.form.get('total_equity'), default=0)
                 db.commit()
                 return redirect(url_for('decision.balance_sheet_list'))
             except Exception as e:

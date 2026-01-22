@@ -35,27 +35,30 @@
                         <label for="sales" class="block text-sm font-medium text-gray-700 mb-2">
                             売上高（円）
                         </label>
-                        <input type="number" id="sales" name="sales" 
+                           <input type="text" id="sales" name="sales" 
                                value="{% if profit_loss %}{{ profit_loss.sales }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="cost_of_sales" class="block text-sm font-medium text-gray-700 mb-2">
                             売上原価（円）
                         </label>
-                        <input type="number" id="cost_of_sales" name="cost_of_sales" 
+                           <input type="text" id="cost_of_sales" name="cost_of_sales" 
                                value="{% if profit_loss %}{{ profit_loss.cost_of_sales }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="gross_profit" class="block text-sm font-medium text-gray-700 mb-2">
                             売上総利益（円）
                         </label>
-                        <input type="number" id="gross_profit" name="gross_profit" 
+                           <input type="text" id="gross_profit" name="gross_profit" 
                                value="{% if profit_loss %}{{ profit_loss.gross_profit }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*"
                                readonly>
                     </div>
                 </div>
@@ -70,18 +73,20 @@
                         <label for="operating_expenses" class="block text-sm font-medium text-gray-700 mb-2">
                             販売費及び一般管理費（円）
                         </label>
-                        <input type="number" id="operating_expenses" name="operating_expenses" 
+                           <input type="text" id="operating_expenses" name="operating_expenses" 
                                value="{% if profit_loss %}{{ profit_loss.operating_expenses }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="operating_income" class="block text-sm font-medium text-gray-700 mb-2">
                             営業利益（円）
                         </label>
-                        <input type="number" id="operating_income" name="operating_income" 
+                           <input type="text" id="operating_income" name="operating_income" 
                                value="{% if profit_loss %}{{ profit_loss.operating_income }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*"
                                readonly>
                     </div>
                 </div>
@@ -96,27 +101,30 @@
                         <label for="non_operating_income" class="block text-sm font-medium text-gray-700 mb-2">
                             営業外収益（円）
                         </label>
-                        <input type="number" id="non_operating_income" name="non_operating_income" 
+                           <input type="text" id="non_operating_income" name="non_operating_income" 
                                value="{% if profit_loss %}{{ profit_loss.non_operating_income }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="non_operating_expenses" class="block text-sm font-medium text-gray-700 mb-2">
                             営業外費用（円）
                         </label>
-                        <input type="number" id="non_operating_expenses" name="non_operating_expenses" 
+                           <input type="text" id="non_operating_expenses" name="non_operating_expenses" 
                                value="{% if profit_loss %}{{ profit_loss.non_operating_expenses }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="ordinary_income" class="block text-sm font-medium text-gray-700 mb-2">
                             経常利益（円）
                         </label>
-                        <input type="number" id="ordinary_income" name="ordinary_income" 
+                           <input type="text" id="ordinary_income" name="ordinary_income" 
                                value="{% if profit_loss %}{{ profit_loss.ordinary_income }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*"
                                readonly>
                     </div>
                 </div>
@@ -131,18 +139,20 @@
                         <label for="extraordinary_income" class="block text-sm font-medium text-gray-700 mb-2">
                             特別利益（円）
                         </label>
-                        <input type="number" id="extraordinary_income" name="extraordinary_income" 
+                           <input type="text" id="extraordinary_income" name="extraordinary_income" 
                                value="{% if profit_loss %}{{ profit_loss.extraordinary_income }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div>
                         <label for="extraordinary_loss" class="block text-sm font-medium text-gray-700 mb-2">
                             特別損失（円）
                         </label>
-                        <input type="number" id="extraordinary_loss" name="extraordinary_loss" 
+                           <input type="text" id="extraordinary_loss" name="extraordinary_loss" 
                                value="{% if profit_loss %}{{ profit_loss.extraordinary_loss }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                 </div>
             </div>
@@ -156,9 +166,10 @@
                         <label for="income_before_tax" class="block text-sm font-medium text-gray-700 mb-2">
                             税引前当期純利益（円）
                         </label>
-                        <input type="number" id="income_before_tax" name="income_before_tax" 
+                           <input type="text" id="income_before_tax" name="income_before_tax" 
                                value="{% if profit_loss %}{{ profit_loss.income_before_tax }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*"
                                readonly>
                     </div>
                     
@@ -166,18 +177,20 @@
                         <label for="income_tax" class="block text-sm font-medium text-gray-700 mb-2">
                             法人税等（円）
                         </label>
-                        <input type="number" id="income_tax" name="income_tax" 
+                           <input type="text" id="income_tax" name="income_tax" 
                                value="{% if profit_loss %}{{ profit_loss.income_tax }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*">
                     </div>
                     
                     <div class="md:col-span-2">
                         <label for="net_income" class="block text-sm font-medium text-gray-700 mb-2">
                             当期純利益（円）
                         </label>
-                        <input type="number" id="net_income" name="net_income" 
+                           <input type="text" id="net_income" name="net_income" 
                                value="{% if profit_loss %}{{ profit_loss.net_income }}{% else %}0{% endif %}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-100 font-bold text-lg"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-100 font-bold text-lg js-comma-int"
+                               inputmode="numeric" pattern="[0-9,]*"
                                readonly>
                     </div>
                 </div>
@@ -215,26 +228,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const incomeTax = document.getElementById('income_tax');
     const netIncome = document.getElementById('net_income');
     
+    function parseMoney(value) {
+        const s = String(value || '').replace(/,/g, '').trim();
+        const n = parseInt(s || '0', 10);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function formatMoney(value) {
+        const n = parseInt(String(value || '0'), 10);
+        if (isNaN(n)) return '0';
+        return n.toLocaleString('ja-JP');
+    }
+
     function calculate() {
         // 売上総利益 = 売上高 - 売上原価
-        const gp = parseInt(sales.value || 0) - parseInt(costOfSales.value || 0);
-        grossProfit.value = gp;
-        
+        const gp = parseMoney(sales.value) - parseMoney(costOfSales.value);
+        grossProfit.value = formatMoney(gp);
+
         // 営業利益 = 売上総利益 - 販管費
-        const oi = gp - parseInt(operatingExpenses.value || 0);
-        operatingIncome.value = oi;
-        
+        const oi = gp - parseMoney(operatingExpenses.value);
+        operatingIncome.value = formatMoney(oi);
+
         // 経常利益 = 営業利益 + 営業外収益 - 営業外費用
-        const ordi = oi + parseInt(nonOperatingIncome.value || 0) - parseInt(nonOperatingExpenses.value || 0);
-        ordinaryIncome.value = ordi;
-        
+        const ordi = oi + parseMoney(nonOperatingIncome.value) - parseMoney(nonOperatingExpenses.value);
+        ordinaryIncome.value = formatMoney(ordi);
+
         // 税引前当期純利益 = 経常利益 + 特別利益 - 特別損失
-        const ibt = ordi + parseInt(extraordinaryIncome.value || 0) - parseInt(extraordinaryLoss.value || 0);
-        incomeBeforeTax.value = ibt;
-        
+        const ibt = ordi + parseMoney(extraordinaryIncome.value) - parseMoney(extraordinaryLoss.value);
+        incomeBeforeTax.value = formatMoney(ibt);
+
         // 当期純利益 = 税引前当期純利益 - 法人税等
-        const ni = ibt - parseInt(incomeTax.value || 0);
-        netIncome.value = ni;
+        const ni = ibt - parseMoney(incomeTax.value);
+        netIncome.value = formatMoney(ni);
     }
     
     // 各入力フィールドに変更イベントを追加

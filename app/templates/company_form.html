@@ -54,7 +54,8 @@
                         <!-- 資本金 -->
                         <div class="mb-3">
                             <label for="capital" class="form-label">資本金（円）</label>
-                            <input type="number" class="form-control" id="capital" name="capital" 
+                            <input type="text" class="form-control js-comma-int" id="capital" name="capital"
+                                inputmode="numeric" pattern="[0-9,]*"
                                    value="{{ company.capital if company else '' }}"
                                    placeholder="例: 10000000">
                         </div>
@@ -62,9 +63,10 @@
                         <!-- 従業員数 -->
                         <div class="mb-3">
                             <label for="employee_count" class="form-label">従業員数（人）</label>
-                            <input type="number" class="form-control" id="employee_count" name="employee_count" 
+                            <input type="text" class="form-control js-comma-int" id="employee_count" name="employee_count"
+                                inputmode="numeric" pattern="[0-9,]*"
                                    value="{{ company.employee_count if company else '' }}"
-                                   placeholder="例: 50">
+                                placeholder="例: 50">
                         </div>
 
                         <!-- 設立日 -->

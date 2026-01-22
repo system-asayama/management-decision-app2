@@ -65,3 +65,35 @@ def comma(value: Any, *, decimals: int = 0, none_as: str = "-") -> str:
         return f"{int(value):,}"
     except Exception:
         return str(value)
+
+
+def parse_int(value: Any, *, default: Optional[int] = 0, allow_empty: bool = True) -> Optional[int]:
+    """Parse an integer that may contain thousand separators.
+
+    Intended for request.form values like "1,234".
+
+    - None/"" -> default (when allow_empty=True)
+    - Otherwise -> int(value) after stripping commas
+
+    Raises ValueError for invalid inputs when not empty.
+    """
+    if value is None:
+        return default if allow_empty else None
+
+    if isinstance(value, bool):
+        raise ValueError("boolean is not a valid integer")
+
+    if isinstance(value, int):
+        return value
+
+    s = str(value).strip()
+    if s == "":
+        return default if allow_empty else None
+
+    s = s.replace(",", "")
+    return int(s)
+
+
+def parse_int_or_none(value: Any) -> Optional[int]:
+    """Parse an integer or return None for empty input."""
+    return parse_int(value, default=None, allow_empty=True)
