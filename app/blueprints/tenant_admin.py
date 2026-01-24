@@ -2202,6 +2202,11 @@ def tenant_apps():
         
         apps = enabled_apps
         
+        # デバッグ: appsの内容をログ出力
+        print(f"🔍 DEBUG: tenant_apps - apps count: {len(apps)}")
+        for app in apps:
+            print(f"🔍 DEBUG: app = {app}")
+        
         # 店舗情報を取得（現在選択中の店舗）
         store_id = session.get('store_id')
         store = db.query(TTenpo).filter(TTenpo.id == store_id).first() if store_id else None
