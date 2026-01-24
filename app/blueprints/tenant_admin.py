@@ -54,7 +54,22 @@ def dashboard():
         
         # AVAILABLE_APPSからテナントレベルのアプリをフィルタリング
         from ..blueprints.tenant_admin import AVAILABLE_APPS
-        tenant_apps = [app for app in AVAILABLE_APPS if app.get('scope') == 'tenant']
+        
+        # 有効化されたアプリのみを取得
+        tenant_apps = []
+        for app in AVAILABLE_APPS:
+            if app.get('scope') == 'tenant':
+                # TTenantAppSettingでenabled=1のアプリのみ追加
+                app_setting = db.query(TTenantAppSetting).filter(
+                    and_(
+                        TTenantAppSetting.tenant_id == tenant_id,
+                        TTenantAppSetting.app_id == app.get('name'),
+                        TTenantAppSetting.enabled == 1
+                    )
+                ).first()
+                
+                if app_setting:
+                    tenant_apps.append(app)
         
         return render_template('tenant_admin_dashboard.html', 
                              tenant_id=tenant_id,
@@ -1895,15 +1910,14 @@ def employee_new():
 # ========================================
 
 # 利用可能なアプリ一覧
+# 将来的にアプリを追加する場合は、以下の形式で追加してください：
+# {'name': 'app-name', 'display_name': 'アプリ表示名', 'scope': 'store'/'tenant'}
 AVAILABLE_APPS = [
     {
-        'name': 'decision',
-        'display_name': '経営意思決定',
-        'description': '財務分析とシミュレーションで経営意思決定を支援します。',
+        'name': 'accounting',
+        'display_name': '会計システム',
         'scope': 'tenant',
-        'url': 'decision.index',
-        'icon': 'fas fa-chart-line',
-        'color': 'bg-danger'
+        'description': '会計・経理管理システム'
     }
 ]
 
@@ -2017,7 +2031,7 @@ def app_management():
                             app_setting = db.query(TTenpoAppSetting).filter(
                                 and_(
                                     TTenpoAppSetting.store_id == selected_store_id,
-                                    TTenpoAppSetting.app_name == app['name']
+                                    TTenpoAppSetting.app_id == app['name']
                                 )
                             ).first()
                             enabled = app_setting.enabled if app_setting else 1  # デフォルトは有効
@@ -2071,7 +2085,7 @@ def app_management():
                             app_setting = db.query(TTenpoAppSetting).filter(
                                 and_(
                                     TTenpoAppSetting.store_id == selected_store_id,
-                                    TTenpoAppSetting.app_name == app['name']
+                                    TTenpoAppSetting.app_id == app['name']
                                 )
                             ).first()
                             
@@ -2082,7 +2096,7 @@ def app_management():
                                 # 挿入
                                 new_setting = TTenpoAppSetting(
                                     store_id=selected_store_id,
-                                    app_name=app['name'],
+                                    app_id=app['name'],
                                     enabled=enabled
                                 )
                                 db.add(new_setting)
@@ -2097,7 +2111,7 @@ def app_management():
                             app_setting = db.query(TTenpoAppSetting).filter(
                                 and_(
                                     TTenpoAppSetting.store_id == selected_store_id,
-                                    TTenpoAppSetting.app_name == app['name']
+                                    TTenpoAppSetting.app_id == app['name']
                                 )
                             ).first()
                             enabled = app_setting.enabled if app_setting else 1
@@ -2171,13 +2185,17 @@ def tenant_apps():
         
         for app in AVAILABLE_APPS:
             if app['scope'] == 'tenant':
-                app_setting = db.query(TTenantAppSetting).filter(
-                    and_(
-                        TTenantAppSetting.tenant_id == tenant_id,
-                        TTenantAppSetting.app_name == app['name']
-                    )
-                ).first()
-                enabled = app_setting.enabled if app_setting else 1
+                try:
+                    app_setting = db.query(TTenantAppSetting).filter(
+                        and_(
+                            TTenantAppSetting.tenant_id == tenant_id,
+                            TTenantAppSetting.app_id == app['name']
+                        )
+                    ).first()
+                    enabled = app_setting.enabled if app_setting else 0  # デフォルトは無効
+                except Exception:
+                    # テーブルが存在しない場合はデフォルトで無効
+                    enabled = 0
                 
                 if enabled:
                     enabled_apps.append(app)
@@ -2989,7 +3007,7 @@ def store_apps(store_id):
                 app_setting = db.query(TTenpoAppSetting).filter(
                     and_(
                         TTenpoAppSetting.store_id == store_id,
-                        TTenpoAppSetting.app_name == app['name']
+                        TTenpoAppSetting.app_id == app['name']
                     )
                 ).first()
                 enabled = app_setting.enabled if app_setting else 1
