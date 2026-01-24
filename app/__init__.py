@@ -147,7 +147,15 @@ def create_app() -> Flask:
         print(f"⚠️ データベース初期化エラー: {e}")
     
     
-    # データベースマイグレーション実行
+    # ログインシステムの自動マイグレーション実行
+    try:
+        from .auto_migrations import run_auto_migrations
+        run_auto_migrations()
+        print("✅ ログインシステム自動マイグレーション完了")
+    except Exception as e:
+        print(f"⚠️ ログインシステム自動マイグレーションエラー: {e}")
+    
+    # 既存のデータベースマイグレーション実行
     try:
         from .migrations import run_migrations
         run_migrations()

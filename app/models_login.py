@@ -20,6 +20,7 @@ class TKanrisha(Base):
     active = Column(Integer, default=1)
     is_owner = Column(Integer, default=0)
     can_manage_admins = Column(Integer, default=0)
+    can_manage_all_tenants = Column(Integer, default=0, comment='全テナント管理権限（1=全テナントにアクセス可能、0=作成/招待されたテナントのみ）')
     openai_api_key = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -42,7 +43,7 @@ class TJugyoin(Base):
 
 
 class TTenant(Base):
-    """T_テナントテーブル"""
+    """Ｔ_テナントテーブル"""
     __tablename__ = 'T_テナント'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -54,6 +55,7 @@ class TTenant(Base):
     email = Column(String(255), nullable=True)
     openai_api_key = Column(String(255), nullable=True)
     有効 = Column(Integer, default=1)
+    created_by_admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=True, comment='このテナントを作成したシステム管理者のID')
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -121,7 +123,7 @@ class TTenpoAppSetting(Base):
 
 
 class TTenantAdminTenant(Base):
-    """T_テナント管理者_テナント中間テーブル"""
+    """Ｔ_テナント管理者_テナント中間テーブル"""
     __tablename__ = 'T_テナント管理者_テナント'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -129,6 +131,21 @@ class TTenantAdminTenant(Base):
     tenant_id = Column(Integer, ForeignKey('T_テナント.id'), nullable=False)
     is_owner = Column(Integer, default=0, comment='このテナントのオーナーかどうか')
     can_manage_tenant_admins = Column(Integer, default=0, comment='テナント管理者を管理する権限')
+    created_at = Column(DateTime, server_default=func.now())
+    
+    # ユニーク制約: 同じ管理者が同じテナントに複数回紐付けられないようにする
+    __table_args__ = (
+        {'extend_existing': True}
+    )
+
+
+class TSystemAdminTenant(Base):
+    """Ｔ_システム管理者_テナント中間テーブル"""
+    __tablename__ = 'T_システム管理者_テナント'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=False, comment='システム管理者のID')
+    tenant_id = Column(Integer, ForeignKey('T_テナント.id'), nullable=False, comment='テナントID')
     created_at = Column(DateTime, server_default=func.now())
     
     # ユニーク制約: 同じ管理者が同じテナントに複数回紐付けられないようにする
