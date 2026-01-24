@@ -1641,24 +1641,84 @@ def transfer_ownership(admin_id):
         db.close()
 
 
-@bp.route('/app_management')
+@bp.route('/app_management', methods=['GET', 'POST'])
 @require_roles(ROLES["SYSTEM_ADMIN"])
 def app_management():
     """アプリ管理ページ"""
     db = SessionLocal()
+    
     try:
+        if request.method == 'POST':
+            tenant_id = request.form.get('tenant_id')
+            app_id = request.form.get('app_id')
+            action = request.form.get('action')  # 'enable' or 'disable'
+            
+            if not tenant_id or not app_id:
+                flash('テナントとアプリを選択してください', 'error')
+                return redirect(url_for('system_admin.app_management'))
+            
+            # アプリ設定を更新
+            app_setting = db.query(TTenantAppSetting).filter(
+                and_(
+                    TTenantAppSetting.tenant_id == tenant_id,
+                    TTenantAppSetting.app_id == app_id
+                )
+            ).first()
+            
+            if action == 'enable':
+                if not app_setting:
+                    # 新規作成
+                    app_setting = TTenantAppSetting(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        enabled=1
+                    )
+                    db.add(app_setting)
+                else:
+                    app_setting.enabled = 1
+                db.commit()
+                flash(f'アプリを有効化しました', 'success')
+            elif action == 'disable':
+                if app_setting:
+                    app_setting.enabled = 0
+                    db.commit()
+                    flash(f'アプリを無効化しました', 'success')
+            
+            # テナント選択を維持してリダイレクト
+            return redirect(url_for('system_admin.app_management', tenant_id=tenant_id))
+        
+        # GETリクエスト
         # 全テナントを取得
         tenants = db.query(TTenant).filter(TTenant.有効 == 1).all()
         
-        # AVAILABLE_APPSをtenant_admin.pyからインポート
-        from .tenant_admin import AVAILABLE_APPS
+        # 利用可能アプリ一覧を取得
+        available_apps = AVAILABLE_APPS
+        
+        # 選択されたテナントIDを取得
+        selected_tenant_id = request.args.get('tenant_id', type=int)
+        selected_tenant = None
+        
+        if selected_tenant_id:
+            selected_tenant = db.query(TTenant).filter(
+                and_(TTenant.id == selected_tenant_id, TTenant.有効 == 1)
+            ).first()
+        
+        # 各テナントのアプリ設定を取得
+        tenant_app_settings = {}
+        for tenant in tenants:
+            settings = db.query(TTenantAppSetting).filter(
+                TTenantAppSetting.tenant_id == tenant.id
+            ).all()
+            tenant_app_settings[tenant.id] = {s.app_id: s.enabled for s in settings}
         
         return render_template('system_admin_app_management.html',
                              tenants=tenants,
-                             available_apps=AVAILABLE_APPS)
+                             available_apps=available_apps,
+                             tenant_app_settings=tenant_app_settings,
+                             selected_tenant_id=selected_tenant_id,
+                             selected_tenant=selected_tenant)
     finally:
         db.close()
-
 
 @bp.route('/select_tenant_from_mypage', methods=['POST'])
 @require_roles(ROLES["SYSTEM_ADMIN"])
