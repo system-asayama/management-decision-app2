@@ -21,6 +21,9 @@ class TKanrisha(Base):
     is_owner = Column(Integer, default=0)
     can_manage_admins = Column(Integer, default=0)
     can_manage_all_tenants = Column(Integer, default=0, comment='全テナント管理権限（1=全テナントにアクセス可能、0=作成/招待されたテナントのみ）')
+    can_distribute_apps = Column(Integer, default=0, comment='アプリ配布権限（1=他のシステム管理者にアプリを配布可能、0=不可）')
+    app_limit = Column(Integer, nullable=True, comment='アプリ使用上限数（NULL=無制限、N=N個まで）')
+    distributed_by_admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=True, comment='アプリを配布したシステム管理者ID')
     openai_api_key = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -43,7 +46,7 @@ class TJugyoin(Base):
 
 
 class TTenant(Base):
-    """Ｔ_テナントテーブル"""
+    """T_テナントテーブル"""
     __tablename__ = 'T_テナント'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -54,6 +57,11 @@ class TTenant(Base):
     電話番号 = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)
     openai_api_key = Column(String(255), nullable=True)
+    accounting_method = Column(String(20), default='tax_inclusive', nullable=False, comment='経理方式: tax_inclusive=税込経理, tax_exclusive=税抜経理')
+    tax_filing_method = Column(String(30), default='exempt', nullable=True, comment='課税方式: exempt=免税, simplified=簡易課税, general_individual=一般課税(個別対応), general_lump_sum=一般課税(一括比例配分), general_full=一般課税(全額控除)')
+    tax_rounding = Column(String(20), default='cut_off', nullable=True, comment='端数処理: cut_off=切り捨て, round=四捨五入, round_up=切り上げ')
+    simplified_tax_category = Column(String(20), default='category1', nullable=True, comment='簡易課税の事業区分: category1-6')
+    tax_calculation_method = Column(String(50), default='sales_discount_purchase_discount', nullable=True, comment='計算方式')
     有効 = Column(Integer, default=1)
     created_by_admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=True, comment='このテナントを作成したシステム管理者のID')
     created_at = Column(DateTime, server_default=func.now())
@@ -106,7 +114,7 @@ class TTenantAppSetting(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(Integer, ForeignKey('T_テナント.id'), nullable=False)
-    app_name = Column(String(255), nullable=False)
+    app_id = Column(String(255), nullable=False)
     enabled = Column(Integer, default=1)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -117,13 +125,13 @@ class TTenpoAppSetting(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     store_id = Column(Integer, ForeignKey('T_店舗.id'), nullable=False)
-    app_name = Column(String(255), nullable=False)
+    app_id = Column(String(255), nullable=False)
     enabled = Column(Integer, default=1)
     created_at = Column(DateTime, server_default=func.now())
 
 
 class TTenantAdminTenant(Base):
-    """Ｔ_テナント管理者_テナント中間テーブル"""
+    """T_テナント管理者_テナント中間テーブル"""
     __tablename__ = 'T_テナント管理者_テナント'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -135,12 +143,12 @@ class TTenantAdminTenant(Base):
     
     # ユニーク制約: 同じ管理者が同じテナントに複数回紐付けられないようにする
     __table_args__ = (
-        {'extend_existing': True}
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'extend_existing': True}
     )
 
 
 class TSystemAdminTenant(Base):
-    """Ｔ_システム管理者_テナント中間テーブル"""
+    """T_システム管理者_テナント中間テーブル（招待されたテナントを管理）"""
     __tablename__ = 'T_システム管理者_テナント'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -148,7 +156,26 @@ class TSystemAdminTenant(Base):
     tenant_id = Column(Integer, ForeignKey('T_テナント.id'), nullable=False, comment='テナントID')
     created_at = Column(DateTime, server_default=func.now())
     
-    # ユニーク制約: 同じ管理者が同じテナントに複数回紐付けられないようにする
+    # ユニーク制約
     __table_args__ = (
-        {'extend_existing': True}
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'extend_existing': True}
+    )
+
+
+class TSystemAdminApp(Base):
+    """T_システム管理者_アプリ中間テーブル（システム管理者が使用できるアプリを管理）"""
+    __tablename__ = 'T_システム管理者_アプリ'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=False, comment='システム管理者ID')
+    app_id = Column(String(100), nullable=False, comment='アプリID')
+    enabled = Column(Integer, default=1, comment='有効フラグ（0:無効、1:有効）')
+    distributed_at = Column(DateTime, server_default=func.now(), comment='配布日時')
+    distributed_by_admin_id = Column(Integer, ForeignKey('T_管理者.id'), nullable=True, comment='配布したシステム管理者ID')
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # ユニーク制約
+    __table_args__ = (
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'extend_existing': True}
     )
